@@ -481,13 +481,18 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       delete f;
     }
 
+    // Output the symbolic error
+    llvm::raw_ostream *f = openTestFile("fp_error", id);
+    *f << "Symbolic Error: ";
+    *f << state.symbolicError->getCurrentError();
+    *f << "\n";
+    delete f;
+
     if (errorMessage || WritePCs) {
       std::string constraints;
       m_interpreter->getConstraintLog(state, constraints,Interpreter::KQUERY);
       llvm::raw_ostream *f = openTestFile("pc", id);
       *f << constraints;
-      *f << "\nSymbolic Error:\n";
-      *f << state.symbolicError->getCurrentError();
       delete f;
     }
 
