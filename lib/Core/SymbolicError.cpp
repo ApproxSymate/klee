@@ -14,14 +14,20 @@
 
 using namespace klee;
 
-ref<Expr> SymbolicError::getError(Executor *executor, Expr *value) {
-  ref<Expr> errorAmount = valueErrorMap[value];
-  llvm::errs() << "In get error\n";
-  if (!errorAmount.get()) {
-    if (llvm::isa<ConcatExpr>(*value)) {
-      ConcatExpr *concatExpr = llvm::dyn_cast<ConcatExpr>(value);
-      const Array *concatArray =
-          llvm::dyn_cast<ReadExpr>(concatExpr->getLeft())->updates.root;
+ref<Expr> SymbolicError::getError(Executor *executor, ref<Expr> valueExpr,
+                                  llvm::Instruction *value) {
+  ref<Expr> ret = ConstantExpr::create(0, Expr::Int8);
+
+  if (value) {
+    ref<Expr> errorAmount = valueErrorMap[value];
+
+    if (!errorAmount.isNull())
+      return errorAmount;
+  }
+
+  if (ConcatExpr *concatExpr = llvm::dyn_cast<ConcatExpr>(valueExpr)) {
+    const Array *concatArray =
+        llvm::dyn_cast<ReadExpr>(concatExpr->getLeft())->updates.root;
       const Array *errorArray = arrayErrorArrayMap[concatArray];
       if (!errorArray) {
         std::string errorName("_fractional_error_" +
@@ -37,13 +43,8 @@ ref<Expr> SymbolicError::getError(Executor *executor, Expr *value) {
         return newReadExpr;
       }
       UpdateList ul(errorArray, 0);
-      ref<Expr> newReadExpr =
-          ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
-      valueErrorMap[value] = newReadExpr;
-      return newReadExpr;
-
-    } else if (llvm::isa<ReadExpr>(*value)) {
-      ReadExpr *readExpr = llvm::dyn_cast<ReadExpr>(value);
+      ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
+  } else if (ReadExpr *readExpr = llvm::dyn_cast<ReadExpr>(valueExpr)) {
       const Array *readArray = readExpr->updates.root;
       const Array *errorArray = arrayErrorArrayMap[readArray];
       if (!errorArray) {
@@ -59,35 +60,33 @@ ref<Expr> SymbolicError::getError(Executor *executor, Expr *value) {
         return newReadExpr;
       }
       UpdateList ul(errorArray, 0);
-      ref<Expr> newReadExpr =
-          ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
-      valueErrorMap[value] = newReadExpr;
-      return newReadExpr;
-
-    } else if (llvm::isa<ConstantExpr>(value)) {
-      return ConstantExpr::alloc(0, Expr::Int8);
-    } else if (llvm::isa<SExtExpr>(value)) {
-      llvm::errs() << "In sext\n";
-      value->dump();
-      SExtExpr *sExtExpr = llvm::dyn_cast<SExtExpr>(value);
-      return getError(executor, sExtExpr->getKid(0).get());
-    } else if (llvm::isa<AddExpr>(value)) {
-      ref<Expr> lhsError = getError(executor, value->getKid(0).get());
-      ref<Expr> rhsError = getError(executor, value->getKid(1).get());
+      ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
+  } else if (SExtExpr *sExtExpr = llvm::dyn_cast<SExtExpr>(valueExpr)) {
+    ret = getError(executor, sExtExpr->getKid(0));
+  } else if (llvm::isa<AddExpr>(valueExpr)) {
+    ref<Expr> lhsError =
+        getError(executor, valueExpr->getKid(0),
+                 llvm::dyn_cast<llvm::Instruction>(value->getOperand(0)));
+    ref<Expr> rhsError =
+        getError(executor, valueExpr->getKid(1),
+                 llvm::dyn_cast<llvm::Instruction>(value->getOperand(1)));
       // TODO: Add correct error expression here
-      return AddExpr::create(lhsError, rhsError);
-    } else {
+    ret = AddExpr::create(lhsError, rhsError);
+  } else if (!llvm::isa<ConstantExpr>(valueExpr)) {
       assert(!"malformed expression");
-    }
   }
 
-  return errorAmount;
+  if (value) {
+    valueErrorMap[value] = ret;
+  }
+  return ret;
 }
 
 SymbolicError::~SymbolicError() {}
 
-void SymbolicError::addOutput(llvm::Instruction *inst, ref<Expr> expr) {
-  ref<Expr> e = valueErrorMap[expr.get()];
+void SymbolicError::addOutput(llvm::Instruction *inst) {
+  ref<Expr> e =
+      valueErrorMap[llvm::dyn_cast<llvm::Instruction>(inst->getOperand(0))];
   if (e.isNull()) {
     e = ConstantExpr::create(0, Expr::Int8);
   }
@@ -122,14 +121,13 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
                                         std::vector<ref<Expr> > &arguments) {
   switch (instr->getOpcode()) {
   case llvm::Instruction::Add: {
-    ref<Expr> lError = valueErrorMap[arguments[0].get()];
-    ref<Expr> rError = valueErrorMap[arguments[1].get()];
-    if (!lError.get()) {
-      lError = getError(executor, arguments[0].get());
-    }
-    if (!rError.get()) {
-      rError = getError(executor, arguments[1].get());
-    }
+    llvm::Instruction *lOp =
+        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
+    llvm::Instruction *rOp =
+        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
+
+    ref<Expr> lError = getError(executor, arguments[0], lOp);
+    ref<Expr> rError = getError(executor, arguments[1], rOp);
 
     ref<Expr> extendedLeft = lError;
     if (lError->getWidth() != arguments[0]->getWidth()) {
@@ -144,18 +142,17 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
     ref<Expr> errorRight =
         MulExpr::create(extendedRight.get(), arguments[1].get());
     ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
-    valueErrorMap[result.get()] = UDivExpr::create(resultError, result.get());
-    return valueErrorMap[result.get()];
+    valueErrorMap[instr] = UDivExpr::create(resultError, result);
+    return valueErrorMap[instr];
   }
   case llvm::Instruction::Sub: {
-    ref<Expr> lError = valueErrorMap[arguments[0].get()];
-    ref<Expr> rError = valueErrorMap[arguments[1].get()];
-    if (!lError.get()) {
-      lError = getError(executor, arguments[0].get());
-    }
-    if (!rError.get()) {
-      rError = getError(executor, arguments[1].get());
-    }
+    llvm::Instruction *lOp =
+        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
+    llvm::Instruction *rOp =
+        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
+
+    ref<Expr> lError = getError(executor, arguments[0], lOp);
+    ref<Expr> rError = getError(executor, arguments[1], rOp);
 
     ref<Expr> extendedLeft = lError;
     if (lError->getWidth() != arguments[0]->getWidth()) {
@@ -171,18 +168,17 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
     ref<Expr> errorRight =
         MulExpr::create(extendedRight.get(), arguments[1].get());
     ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
-    valueErrorMap[result.get()] = UDivExpr::create(resultError, result.get());
-    return valueErrorMap[result.get()];
+    valueErrorMap[instr] = UDivExpr::create(resultError, result);
+    return valueErrorMap[instr];
   }
   case llvm::Instruction::Mul: {
-    ref<Expr> lError = valueErrorMap[arguments[0].get()];
-    ref<Expr> rError = valueErrorMap[arguments[1].get()];
-    if (!lError.get()) {
-      lError = getError(executor, arguments[0].get());
-    }
-    if (!rError.get()) {
-      rError = getError(executor, arguments[1].get());
-    }
+    llvm::Instruction *lOp =
+        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
+    llvm::Instruction *rOp =
+        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
+
+    ref<Expr> lError = getError(executor, arguments[0], lOp);
+    ref<Expr> rError = getError(executor, arguments[1], rOp);
 
     ref<Expr> extendedLeft = lError;
     if (lError->getWidth() != arguments[0]->getWidth()) {
@@ -193,19 +189,17 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
     }
 
-    valueErrorMap[result.get()] =
-        AddExpr::create(extendedLeft.get(), extendedRight.get());
-    return valueErrorMap[result.get()];
+    valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
+    return valueErrorMap[instr];
     }
     case llvm::Instruction::UDiv: {
-      ref<Expr> lError = valueErrorMap[arguments[0].get()];
-      ref<Expr> rError = valueErrorMap[arguments[1].get()];
-      if (!lError.get()) {
-        lError = getError(executor, arguments[0].get());
-      }
-      if (!rError.get()) {
-        rError = getError(executor, arguments[1].get());
-      }
+      llvm::Instruction *lOp =
+          llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
+      llvm::Instruction *rOp =
+          llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
+
+      ref<Expr> lError = getError(executor, arguments[0], lOp);
+      ref<Expr> rError = getError(executor, arguments[1], rOp);
 
       ref<Expr> extendedLeft = lError;
       if (lError->getWidth() != arguments[0]->getWidth()) {
@@ -216,19 +210,17 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
         extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
       }
 
-      valueErrorMap[result.get()] =
-          AddExpr::create(extendedLeft.get(), extendedRight.get());
-      return valueErrorMap[result.get()];
+      valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
+      return valueErrorMap[instr];
     }
     case llvm::Instruction::SDiv: {
-      ref<Expr> lError = valueErrorMap[arguments[0].get()];
-      ref<Expr> rError = valueErrorMap[arguments[1].get()];
-      if (!lError.get()) {
-        lError = getError(executor, arguments[0].get());
-      }
-      if (!rError.get()) {
-        rError = getError(executor, arguments[1].get());
-      }
+      llvm::Instruction *lOp =
+          llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
+      llvm::Instruction *rOp =
+          llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
+
+      ref<Expr> lError = getError(executor, arguments[0], lOp);
+      ref<Expr> rError = getError(executor, arguments[1], rOp);
 
       ref<Expr> extendedLeft = lError;
       if (lError->getWidth() != arguments[0]->getWidth()) {
@@ -239,9 +231,8 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
         extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
       }
 
-      valueErrorMap[result.get()] =
-          AddExpr::create(extendedLeft.get(), extendedRight.get());
-      return valueErrorMap[result.get()];
+      valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
+      return valueErrorMap[instr];
     }
   }
   return ConstantExpr::create(0, Expr::Int8);

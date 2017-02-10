@@ -22,11 +22,12 @@ class Executor;
 
 class SymbolicError {
 
-  std::map<Expr *, ref<Expr> > valueErrorMap;
+  std::map<llvm::Instruction *, ref<Expr> > valueErrorMap;
 
   std::map<const Array *, const Array *> arrayErrorArrayMap;
 
-  ref<Expr> getError(Executor *executor, Expr *value);
+  ref<Expr> getError(Executor *executor, ref<Expr> valueExpr,
+                     llvm::Instruction *value = 0);
 
   ArrayCache errorArrayCache;
 
@@ -39,7 +40,7 @@ public:
 
   ~SymbolicError();
 
-  void addOutput(llvm::Instruction *inst, ref<Expr> expr);
+  void addOutput(llvm::Instruction *inst);
 
   ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
                            ref<Expr> result,
