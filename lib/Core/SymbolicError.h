@@ -30,16 +30,12 @@ class SymbolicError {
 
   ArrayCache errorArrayCache;
 
-  ref<Expr> currentError;
-
   std::string outputString;
 
 public:
-  SymbolicError() { currentError = ConstantExpr::alloc(0, Expr::Int8); }
+  SymbolicError() {}
 
-  SymbolicError(SymbolicError &symErr) {
-    currentError = ConstantExpr::alloc(0, Expr::Int8);
-  }
+  SymbolicError(SymbolicError &symErr) {}
 
   ~SymbolicError();
 
@@ -47,8 +43,9 @@ public:
 
   void addOutput(llvm::Instruction *inst);
 
-  void propagateError(Executor *executor, llvm::Instruction *instr,
-                      ref<Expr> result, std::vector<ref<Expr> > &arguments);
+  ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
+                           ref<Expr> result,
+                           std::vector<ref<Expr> > &arguments);
 
   std::string getOutputString() { return outputString; }
 };
