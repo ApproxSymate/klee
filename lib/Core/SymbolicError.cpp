@@ -86,12 +86,11 @@ ref<Expr> SymbolicError::getError(Executor *executor, Expr *value) {
 
 SymbolicError::~SymbolicError() {}
 
-ref<Expr> SymbolicError::getCurrentError() {
-  return ConstantExpr::create(0, Expr::Int8);
-}
-
-void SymbolicError::addOutput(llvm::Instruction *inst) {
-  ref<Expr> e = getCurrentError();
+void SymbolicError::addOutput(llvm::Instruction *inst, ref<Expr> expr) {
+  ref<Expr> e = valueErrorMap[expr.get()];
+  if (e.isNull()) {
+    e = ConstantExpr::create(0, Expr::Int8);
+  }
   llvm::raw_string_ostream stream(outputString);
   if (!outputString.empty()) {
     stream << "\n------------------------\n";

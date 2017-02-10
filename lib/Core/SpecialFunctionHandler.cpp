@@ -427,7 +427,7 @@ SpecialFunctionHandler::handleOutputError(ExecutionState &state,
   assert(arguments.size() == 1 &&
          "invalid number of arguments to klee_output_error");
 
-  state.symbolicError->addOutput(target->inst);
+  state.symbolicError->addOutput(target->inst, arguments[0]);
 }
 
 void SpecialFunctionHandler::handlePreferCex(ExecutionState &state,
