@@ -154,6 +154,10 @@ extern "C" {
 
   /* Merge current states together if possible */
   void klee_merge();
+
+  /* Outputs floating-point error expression */
+  void klee_output_error(uintptr_t n);
+
 #ifdef __cplusplus
 }
 #endif
