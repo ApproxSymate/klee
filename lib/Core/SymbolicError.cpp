@@ -15,7 +15,7 @@
 using namespace klee;
 
 ref<Expr> SymbolicError::getError(Executor *executor, ref<Expr> valueExpr,
-                                  llvm::Instruction *value) {
+                                  llvm::Value *value) {
   ref<Expr> ret = ConstantExpr::create(0, Expr::Int8);
 
   if (value) {
@@ -37,13 +37,11 @@ ref<Expr> SymbolicError::getError(Executor *executor, ref<Expr> valueExpr,
             errorArrayCache.CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
         arrayErrorArrayMap[concatArray] = newErrorArray;
-        ref<Expr> newReadExpr =
-            ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
-        valueErrorMap[value] = newReadExpr;
-        return newReadExpr;
+        ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
+      } else {
+        UpdateList ul(errorArray, 0);
+        ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
       }
-      UpdateList ul(errorArray, 0);
-      ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
   } else if (ReadExpr *readExpr = llvm::dyn_cast<ReadExpr>(valueExpr)) {
       const Array *readArray = readExpr->updates.root;
       const Array *errorArray = arrayErrorArrayMap[readArray];
@@ -54,22 +52,16 @@ ref<Expr> SymbolicError::getError(Executor *executor, ref<Expr> valueExpr,
             errorArrayCache.CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
         arrayErrorArrayMap[readArray] = newErrorArray;
-        ref<Expr> newReadExpr =
-            ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
-        valueErrorMap[value] = newReadExpr;
-        return newReadExpr;
+        ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
+      } else {
+        UpdateList ul(errorArray, 0);
+        ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
       }
-      UpdateList ul(errorArray, 0);
-      ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
   } else if (SExtExpr *sExtExpr = llvm::dyn_cast<SExtExpr>(valueExpr)) {
     ret = getError(executor, sExtExpr->getKid(0));
   } else if (llvm::isa<AddExpr>(valueExpr)) {
-    ref<Expr> lhsError =
-        getError(executor, valueExpr->getKid(0),
-                 llvm::dyn_cast<llvm::Instruction>(value->getOperand(0)));
-    ref<Expr> rhsError =
-        getError(executor, valueExpr->getKid(1),
-                 llvm::dyn_cast<llvm::Instruction>(value->getOperand(1)));
+    ref<Expr> lhsError = getError(executor, valueExpr->getKid(0));
+    ref<Expr> rhsError = getError(executor, valueExpr->getKid(1));
       // TODO: Add correct error expression here
     ret = AddExpr::create(lhsError, rhsError);
   } else if (!llvm::isa<ConstantExpr>(valueExpr)) {
@@ -121,10 +113,8 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
                                         std::vector<ref<Expr> > &arguments) {
   switch (instr->getOpcode()) {
   case llvm::Instruction::Add: {
-    llvm::Instruction *lOp =
-        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
-    llvm::Instruction *rOp =
-        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
+    llvm::Value *lOp = instr->getOperand(0);
+    llvm::Value *rOp = instr->getOperand(1);
 
     ref<Expr> lError = getError(executor, arguments[0], lOp);
     ref<Expr> rError = getError(executor, arguments[1], rOp);
@@ -144,59 +134,51 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
     ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
     valueErrorMap[instr] = UDivExpr::create(resultError, result);
     return valueErrorMap[instr];
-  }
-  case llvm::Instruction::Sub: {
-    llvm::Instruction *lOp =
-        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
-    llvm::Instruction *rOp =
-        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
-
-    ref<Expr> lError = getError(executor, arguments[0], lOp);
-    ref<Expr> rError = getError(executor, arguments[1], rOp);
-
-    ref<Expr> extendedLeft = lError;
-    if (lError->getWidth() != arguments[0]->getWidth()) {
-      extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
     }
-    ref<Expr> extendedRight = rError;
-    if (rError->getWidth() != arguments[1]->getWidth()) {
-      extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
+    case llvm::Instruction::Sub: {
+      llvm::Value *lOp = instr->getOperand(0);
+      llvm::Value *rOp = instr->getOperand(1);
+
+      ref<Expr> lError = getError(executor, arguments[0], lOp);
+      ref<Expr> rError = getError(executor, arguments[1], rOp);
+
+      ref<Expr> extendedLeft = lError;
+      if (lError->getWidth() != arguments[0]->getWidth()) {
+        extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
+      }
+      ref<Expr> extendedRight = rError;
+      if (rError->getWidth() != arguments[1]->getWidth()) {
+        extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
+      }
+
+      ref<Expr> errorLeft = MulExpr::create(extendedLeft.get(), arguments[0]);
+      ref<Expr> errorRight = MulExpr::create(extendedRight.get(), arguments[1]);
+      ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
+      valueErrorMap[instr] = UDivExpr::create(resultError, result);
+      return valueErrorMap[instr];
     }
+    case llvm::Instruction::Mul: {
+      llvm::Value *lOp = instr->getOperand(0);
+      llvm::Value *rOp = instr->getOperand(1);
 
-    ref<Expr> errorLeft =
-        MulExpr::create(extendedLeft.get(), arguments[0].get());
-    ref<Expr> errorRight =
-        MulExpr::create(extendedRight.get(), arguments[1].get());
-    ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
-    valueErrorMap[instr] = UDivExpr::create(resultError, result);
-    return valueErrorMap[instr];
-  }
-  case llvm::Instruction::Mul: {
-    llvm::Instruction *lOp =
-        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
-    llvm::Instruction *rOp =
-        llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
+      ref<Expr> lError = getError(executor, arguments[0], lOp);
+      ref<Expr> rError = getError(executor, arguments[1], rOp);
 
-    ref<Expr> lError = getError(executor, arguments[0], lOp);
-    ref<Expr> rError = getError(executor, arguments[1], rOp);
+      ref<Expr> extendedLeft = lError;
+      if (lError->getWidth() != arguments[0]->getWidth()) {
+        extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
+      }
+      ref<Expr> extendedRight = rError;
+      if (rError->getWidth() != arguments[1]->getWidth()) {
+        extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
+      }
 
-    ref<Expr> extendedLeft = lError;
-    if (lError->getWidth() != arguments[0]->getWidth()) {
-      extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
-    }
-    ref<Expr> extendedRight = rError;
-    if (rError->getWidth() != arguments[1]->getWidth()) {
-      extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
-    }
-
-    valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
-    return valueErrorMap[instr];
+      valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
+      return valueErrorMap[instr];
     }
     case llvm::Instruction::UDiv: {
-      llvm::Instruction *lOp =
-          llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
-      llvm::Instruction *rOp =
-          llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
+      llvm::Value *lOp = instr->getOperand(0);
+      llvm::Value *rOp = instr->getOperand(1);
 
       ref<Expr> lError = getError(executor, arguments[0], lOp);
       ref<Expr> rError = getError(executor, arguments[1], rOp);
@@ -214,10 +196,8 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       return valueErrorMap[instr];
     }
     case llvm::Instruction::SDiv: {
-      llvm::Instruction *lOp =
-          llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
-      llvm::Instruction *rOp =
-          llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
+      llvm::Value *lOp = instr->getOperand(0);
+      llvm::Value *rOp = instr->getOperand(1);
 
       ref<Expr> lError = getError(executor, arguments[0], lOp);
       ref<Expr> rError = getError(executor, arguments[1], rOp);
