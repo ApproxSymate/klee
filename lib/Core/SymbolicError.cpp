@@ -217,3 +217,28 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
   }
   return ConstantExpr::create(0, Expr::Int8);
 }
+
+void SymbolicError::print(llvm::raw_ostream &os) const {
+  os << "Value->Expression\n";
+  for (std::map<llvm::Value *, ref<Expr> >::const_iterator
+           it = valueErrorMap.begin(),
+           ie = valueErrorMap.end();
+       it != ie; ++it) {
+    os << "[";
+    it->first->print(os);
+    os << ",";
+    it->second->print(os);
+    os << "]\n";
+  }
+
+  os << "Array->Error Array:\n";
+  for (std::map<const Array *, const Array *>::const_iterator
+           it = arrayErrorArrayMap.begin(),
+           ie = arrayErrorArrayMap.end();
+       it != ie; ++it) {
+    os << "[" << it->first->name << "," << it->second->name << "]\n";
+  }
+
+  os << "Output String:\n";
+  os << outputString;
+}

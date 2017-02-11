@@ -47,6 +47,12 @@ public:
                            std::vector<ref<Expr> > &arguments);
 
   std::string getOutputString() { return outputString; }
+
+  /// print - Print the object content to stream
+  void print(llvm::raw_ostream &os) const;
+
+  /// dump - Print the object content to stderr
+  void dump() const { print(llvm::errs()); }
 };
 }
 
