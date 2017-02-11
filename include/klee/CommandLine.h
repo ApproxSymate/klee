@@ -47,6 +47,8 @@ extern llvm::cl::list<QueryLoggingSolverType> queryLoggingOptions;
 enum CoreSolverType { STP_SOLVER, METASMT_SOLVER, DUMMY_SOLVER, Z3_SOLVER };
 extern llvm::cl::opt<CoreSolverType> CoreSolverToUse;
 
+extern llvm::cl::opt<bool> DebugFPError;
+
 #ifdef ENABLE_METASMT
 
 enum MetaSMTBackendType
