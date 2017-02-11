@@ -219,7 +219,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
 }
 
 void SymbolicError::print(llvm::raw_ostream &os) const {
-  os << "Value->Expression\n";
+  os << "Value->Expression:\n";
   for (std::map<llvm::Value *, ref<Expr> >::const_iterator
            it = valueErrorMap.begin(),
            ie = valueErrorMap.end();
