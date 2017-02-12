@@ -218,6 +218,27 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
   return ConstantExpr::create(0, Expr::Int8);
 }
 
+void SymbolicError::executeStore(ref<Expr> address, ref<Expr> error) {
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    storedError[cp->getZExtValue()] = error;
+    return;
+  }
+  assert(!"non-constant address");
+}
+
+ref<Expr> SymbolicError::executeLoad(ref<Expr> address) {
+  ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    ref<Expr> se = storedError[cp->getZExtValue()];
+    if (!se.isNull()) {
+      error = se;
+    }
+  } else {
+    assert(!"non-constant address");
+  }
+  return error;
+}
+
 void SymbolicError::print(llvm::raw_ostream &os) const {
   os << "Value->Expression:\n";
   for (std::map<llvm::Value *, ref<Expr> >::const_iterator

@@ -280,10 +280,10 @@ private:
                    
   // do address resolution / object binding / out of bounds checking
   // and perform the operation
-  void executeMemoryOperation(ExecutionState &state,
-                              bool isWrite,
+  void executeMemoryOperation(ExecutionState &state, bool isWrite,
                               ref<Expr> address,
                               ref<Expr> value /* undef if read */,
+                              ref<Expr> error /* undef if read */,
                               KInstruction *target /* undef if write */);
 
   void executeMakeSymbolic(ExecutionState &state, const MemoryObject *mo,

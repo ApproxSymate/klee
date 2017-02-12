@@ -1251,28 +1251,33 @@ void Executor::executeCall(ExecutionState &state,
       // size. This happens to work fir x86-32 and x86-64, however.
       Expr::Width WordSize = Context::get().getPointerWidth();
       if (WordSize == Expr::Int32) {
-        executeMemoryOperation(state, true, arguments[0], 
-                               sf.varargs->getBaseExpr(), 0);
+        executeMemoryOperation(state, true, arguments[0],
+                               sf.varargs->getBaseExpr(),
+                               ConstantExpr::create(0, Expr::Int8), 0);
       } else {
         assert(WordSize == Expr::Int64 && "Unknown word size!");
 
         // X86-64 has quite complicated calling convention. However,
         // instead of implementing it, we can do a simple hack: just
         // make a function believe that all varargs are on stack.
-        executeMemoryOperation(state, true, arguments[0],
-                               ConstantExpr::create(48, 32), 0); // gp_offset
-        executeMemoryOperation(state, true,
-                               AddExpr::create(arguments[0], 
-                                               ConstantExpr::create(4, 64)),
-                               ConstantExpr::create(304, 32), 0); // fp_offset
-        executeMemoryOperation(state, true,
-                               AddExpr::create(arguments[0], 
-                                               ConstantExpr::create(8, 64)),
-                               sf.varargs->getBaseExpr(), 0); // overflow_arg_area
-        executeMemoryOperation(state, true,
-                               AddExpr::create(arguments[0], 
-                                               ConstantExpr::create(16, 64)),
-                               ConstantExpr::create(0, 64), 0); // reg_save_area
+        executeMemoryOperation(
+            state, true, arguments[0], ConstantExpr::create(48, 32),
+            ConstantExpr::create(0, Expr::Int8), 0); // gp_offset
+        executeMemoryOperation(
+            state, true,
+            AddExpr::create(arguments[0], ConstantExpr::create(4, 64)),
+            ConstantExpr::create(304, 32), ConstantExpr::create(0, Expr::Int8),
+            0); // fp_offset
+        executeMemoryOperation(
+            state, true,
+            AddExpr::create(arguments[0], ConstantExpr::create(8, 64)),
+            sf.varargs->getBaseExpr(), ConstantExpr::create(0, Expr::Int8),
+            0); // overflow_arg_area
+        executeMemoryOperation(
+            state, true,
+            AddExpr::create(arguments[0], ConstantExpr::create(16, 64)),
+            ConstantExpr::create(0, 64), ConstantExpr::create(0, Expr::Int8),
+            0); // reg_save_area
       }
       break;
     }
@@ -2164,13 +2169,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
   case Instruction::Load: {
     ref<Expr> base = eval(ki, 0, state).value;
-    executeMemoryOperation(state, false, base, 0, ki);
+    executeMemoryOperation(state, false, base, 0,
+                           ConstantExpr::create(0, Expr::Int8), ki);
     break;
   }
   case Instruction::Store: {
     ref<Expr> base = eval(ki, 1, state).value;
-    ref<Expr> value = eval(ki, 0, state).value;
-    executeMemoryOperation(state, true, base, value, 0);
+    Cell valueCell = eval(ki, 0, state);
+    ref<Expr> value = valueCell.value;
+    ref<Expr> error = valueCell.error;
+    executeMemoryOperation(state, true, base, value, error, 0);
     break;
   }
 
@@ -3365,11 +3373,10 @@ void Executor::resolveExact(ExecutionState &state,
   }
 }
 
-void Executor::executeMemoryOperation(ExecutionState &state,
-                                      bool isWrite,
-                                      ref<Expr> address,
-                                      ref<Expr> value /* undef if read */,
-                                      KInstruction *target /* undef if write */) {
+void Executor::executeMemoryOperation(
+    ExecutionState &state, bool isWrite, ref<Expr> address,
+    ref<Expr> value /* undef if read */, ref<Expr> error /* undef if read */,
+    KInstruction *target /* undef if write */) {
   Expr::Width type = (isWrite ? value->getWidth() : 
                      getWidthForLLVMType(target->inst->getType()));
   unsigned bytes = Expr::getMinBytesForWidth(type);
@@ -3422,14 +3429,16 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         } else {
           ObjectState *wos = state.addressSpace.getWriteable(mo, os);
           wos->write(offset, value);
-        }          
+          state.symbolicError->executeStore(address, error);
+        }
       } else {
         ref<Expr> result = os->read(offset, type);
         
         if (interpreterOpts.MakeConcreteSymbolic)
           result = replaceReadWithSymbolic(state, result);
 
-        bindLocal(target, state, result, ConstantExpr::create(0, Expr::Int8));
+        ref<Expr> resultError = state.symbolicError->executeLoad(address);
+        bindLocal(target, state, result, resultError);
       }
 
       return;
@@ -3466,10 +3475,12 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         } else {
           ObjectState *wos = bound->addressSpace.getWriteable(mo, os);
           wos->write(mo->getOffsetExpr(address), value);
+          state.symbolicError->executeStore(address, error);
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
-        bindLocal(target, *bound, result, ConstantExpr::create(0, Expr::Int8));
+        ref<Expr> resultError = state.symbolicError->executeLoad(address);
+        bindLocal(target, *bound, result, resultError);
       }
     }
 

@@ -33,10 +33,12 @@ class SymbolicError {
 
   std::string outputString;
 
+  std::map<uintptr_t, ref<Expr> > storedError;
+
 public:
   SymbolicError() {}
 
-  SymbolicError(SymbolicError &symErr) {}
+  SymbolicError(SymbolicError &symErr) { storedError = symErr.storedError; }
 
   ~SymbolicError();
 
@@ -47,6 +49,10 @@ public:
                            std::vector<ref<Expr> > &arguments);
 
   std::string getOutputString() { return outputString; }
+
+  void executeStore(ref<Expr> address, ref<Expr> error);
+
+  ref<Expr> executeLoad(ref<Expr> address);
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;
