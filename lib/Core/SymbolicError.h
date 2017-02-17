@@ -52,7 +52,7 @@ public:
 
   void executeStore(ref<Expr> address, ref<Expr> error);
 
-  ref<Expr> executeLoad(ref<Expr> address);
+  ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address);
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;

@@ -3450,7 +3450,8 @@ void Executor::executeMemoryOperation(
         if (interpreterOpts.MakeConcreteSymbolic)
           result = replaceReadWithSymbolic(state, result);
 
-        ref<Expr> resultError = state.symbolicError->executeLoad(address);
+        ref<Expr> resultError =
+            state.symbolicError->executeLoad(target->inst, address);
         bindLocal(target, state, result, resultError);
       }
 
@@ -3492,7 +3493,8 @@ void Executor::executeMemoryOperation(
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
-        ref<Expr> resultError = state.symbolicError->executeLoad(address);
+        ref<Expr> resultError =
+            state.symbolicError->executeLoad(target->inst, address);
         bindLocal(target, *bound, result, resultError);
       }
     }
