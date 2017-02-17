@@ -214,6 +214,21 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
       return valueErrorMap[instr];
     }
+    default: {
+      // By default, simply find error in one of the arguments
+      ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+      for (unsigned i = 0, s = arguments.size(); i < s; ++i) {
+        llvm::Value *v = instr->getOperand(i);
+        std::map<llvm::Value *, ref<Expr> >::iterator it =
+            valueErrorMap.find(v);
+        if (it != valueErrorMap.end()) {
+          error = valueErrorMap[v];
+          break;
+        }
+      }
+      valueErrorMap[instr] = error;
+      return error;
+    }
   }
   return ConstantExpr::create(0, Expr::Int8);
 }

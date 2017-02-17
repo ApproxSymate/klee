@@ -2217,47 +2217,69 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     // Conversion
   case Instruction::Trunc: {
     CastInst *ci = cast<CastInst>(i);
-    ref<Expr> result = ExtractExpr::create(eval(ki, 0, state).value,
-                                           0,
-                                           getWidthForLLVMType(ci->getType()));
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> result =
+        ExtractExpr::create(c.value, 0, getWidthForLLVMType(ci->getType()));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(c.value);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
   case Instruction::ZExt: {
     CastInst *ci = cast<CastInst>(i);
-    ref<Expr> result = ZExtExpr::create(eval(ki, 0, state).value,
-                                        getWidthForLLVMType(ci->getType()));
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> result =
+        ZExtExpr::create(c.value, getWidthForLLVMType(ci->getType()));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(c.value);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
   case Instruction::SExt: {
     CastInst *ci = cast<CastInst>(i);
-    ref<Expr> result = SExtExpr::create(eval(ki, 0, state).value,
-                                        getWidthForLLVMType(ci->getType()));
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> result =
+        SExtExpr::create(c.value, getWidthForLLVMType(ci->getType()));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(c.value);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
   case Instruction::IntToPtr: {
     CastInst *ci = cast<CastInst>(i);
     Expr::Width pType = getWidthForLLVMType(ci->getType());
-    ref<Expr> arg = eval(ki, 0, state).value;
-    bindLocal(ki, state, ZExtExpr::create(arg, pType),
-              ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> arg = c.value;
+    ref<Expr> result = ZExtExpr::create(arg, pType);
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   } 
   case Instruction::PtrToInt: {
     CastInst *ci = cast<CastInst>(i);
     Expr::Width iType = getWidthForLLVMType(ci->getType());
     ref<Expr> arg = eval(ki, 0, state).value;
-    bindLocal(ki, state, ZExtExpr::create(arg, iType),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ZExtExpr::create(arg, iType);
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
   case Instruction::BitCast: {
-    ref<Expr> result = eval(ki, 0, state).value;
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> result = c.value;
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(result);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
