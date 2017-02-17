@@ -272,16 +272,13 @@ private:
   void executeFree(ExecutionState &state,
                    ref<Expr> address,
                    KInstruction *target = 0);
-  
-  void executeCall(ExecutionState &state, 
-                   KInstruction *ki,
-                   llvm::Function *f,
-                   std::vector< ref<Expr> > &arguments);
-                   
+
+  void executeCall(ExecutionState &state, KInstruction *ki, llvm::Function *f,
+                   std::vector<Cell> &arguments);
+
   // do address resolution / object binding / out of bounds checking
   // and perform the operation
-  void executeMemoryOperation(ExecutionState &state, bool isWrite,
-                              ref<Expr> address,
+  void executeMemoryOperation(ExecutionState &state, bool isWrite, Cell &cell,
                               ref<Expr> value /* undef if read */,
                               ref<Expr> error /* undef if read */,
                               KInstruction *target /* undef if write */);
