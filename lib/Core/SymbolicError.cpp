@@ -214,8 +214,49 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
       return valueErrorMap[instr];
     }
+    default: {
+      // By default, simply find error in one of the arguments
+      ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+      for (unsigned i = 0, s = arguments.size(); i < s; ++i) {
+        llvm::Value *v = instr->getOperand(i);
+        std::map<llvm::Value *, ref<Expr> >::iterator it =
+            valueErrorMap.find(v);
+        if (it != valueErrorMap.end()) {
+          error = valueErrorMap[v];
+          break;
+        }
+      }
+      valueErrorMap[instr] = error;
+      return error;
+    }
   }
   return ConstantExpr::create(0, Expr::Int8);
+}
+
+void SymbolicError::executeStore(ref<Expr> address, ref<Expr> error) {
+  if (error.isNull())
+    return;
+
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    storedError[cp->getZExtValue()] = error;
+    return;
+  }
+  assert(!"non-constant address");
+}
+
+ref<Expr> SymbolicError::executeLoad(llvm::Value *value, ref<Expr> address) {
+  ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    std::map<uintptr_t, ref<Expr> >::iterator it =
+        storedError.find(cp->getZExtValue());
+    if (it != storedError.end()) {
+      error = it->second;
+    }
+  } else {
+    assert(!"non-constant address");
+  }
+  valueErrorMap[value] = error;
+  return error;
 }
 
 void SymbolicError::print(llvm::raw_ostream &os) const {
@@ -237,6 +278,15 @@ void SymbolicError::print(llvm::raw_ostream &os) const {
            ie = arrayErrorArrayMap.end();
        it != ie; ++it) {
     os << "[" << it->first->name << "," << it->second->name << "]\n";
+  }
+
+  os << "Store:\n";
+  for (std::map<uintptr_t, ref<Expr> >::const_iterator it = storedError.begin(),
+                                                       ie = storedError.end();
+       it != ie; ++it) {
+    os << it->first << ": ";
+    it->second->print(os);
+    os << "\n";
   }
 
   os << "Output String:\n";

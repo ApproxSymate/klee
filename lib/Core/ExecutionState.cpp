@@ -142,6 +142,7 @@ ExecutionState *ExecutionState::branch() {
   weight *= .5;
   falseState->weight -= weight;
 
+  falseState->symbolicError = new SymbolicError(*(this->symbolicError));
   return falseState;
 }
 
