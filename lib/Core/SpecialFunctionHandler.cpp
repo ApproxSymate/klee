@@ -427,7 +427,16 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
   assert(arguments.size() == 2 &&
          "invalid number of arguments to klee_bound_error");
 
-  state.symbolicError->outputErrorBound(target->inst);
+  if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(arguments.at(1))) {
+    uint64_t intValue = ce->getZExtValue();
+    double *boundPtr = reinterpret_cast<double *>(&intValue);
+    double bound = *boundPtr;
+
+    state.symbolicError->outputErrorBound(target->inst, bound);
+    return;
+  }
+
+  assert(!"second argument of klee_bound_error must be constant");
 }
 
 void SpecialFunctionHandler::handlePreferCex(ExecutionState &state,

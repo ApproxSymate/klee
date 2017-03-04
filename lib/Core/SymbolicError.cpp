@@ -76,12 +76,18 @@ ref<Expr> SymbolicError::getError(Executor *executor, ref<Expr> valueExpr,
 
 SymbolicError::~SymbolicError() {}
 
-void SymbolicError::outputErrorBound(llvm::Instruction *inst) {
+void SymbolicError::outputErrorBound(llvm::Instruction *inst, double bound) {
   ref<Expr> e =
       valueErrorMap[llvm::dyn_cast<llvm::Instruction>(inst->getOperand(0))];
   if (e.isNull()) {
     e = ConstantExpr::create(0, Expr::Int8);
   }
+
+  std::string errorVar;
+  llvm::raw_string_ostream errorVarStream(errorVar);
+  errorVarStream << "__error__" << reinterpret_cast<uint64_t>(e.get());
+  errorVarStream.flush();
+
   llvm::raw_string_ostream stream(outputString);
   if (!outputString.empty()) {
     stream << "\n------------------------\n";
@@ -103,7 +109,12 @@ void SymbolicError::outputErrorBound(llvm::Instruction *inst) {
       stream << func->getName() << ": ";
     }
   }
+
+  stream << errorVar << " == (";
   e->print(stream);
+  stream << ") && ";
+  stream << "(" << errorVar << " <= " << bound << ") && ";
+  stream << "(" << errorVar << " >= -" << bound << ")\n";
   stream.flush();
 }
 
