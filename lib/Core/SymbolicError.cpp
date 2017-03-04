@@ -127,95 +127,137 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
     if (rError->getWidth() != arguments[1]->getWidth()) {
       extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
     }
-    ref<Expr> errorLeft =
-        MulExpr::create(extendedLeft.get(), arguments[0].get());
-    ref<Expr> errorRight =
-        MulExpr::create(extendedRight.get(), arguments[1].get());
+    ref<Expr> errorLeft = MulExpr::create(extendedLeft, arguments[0]);
+    ref<Expr> errorRight = MulExpr::create(extendedRight, arguments[1]);
+    ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
+    if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(result)) {
+      if (ce->getZExtValue())
+        result = UDivExpr::create(resultError, result);
+    }
+    valueErrorMap[instr] = result;
+    return result;
+  }
+  case llvm::Instruction::Sub: {
+    llvm::Value *lOp = instr->getOperand(0);
+    llvm::Value *rOp = instr->getOperand(1);
+
+    ref<Expr> lError = getError(executor, arguments[0], lOp);
+    ref<Expr> rError = getError(executor, arguments[1], rOp);
+
+    ref<Expr> extendedLeft = lError;
+    if (lError->getWidth() != arguments[0]->getWidth()) {
+      extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
+    }
+    ref<Expr> extendedRight = rError;
+    if (rError->getWidth() != arguments[1]->getWidth()) {
+      extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
+    }
+
+    ref<Expr> errorLeft = MulExpr::create(extendedLeft.get(), arguments[0]);
+    ref<Expr> errorRight = MulExpr::create(extendedRight.get(), arguments[1]);
     ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
     valueErrorMap[instr] = UDivExpr::create(resultError, result);
     return valueErrorMap[instr];
+  }
+  case llvm::Instruction::Mul: {
+    llvm::Value *lOp = instr->getOperand(0);
+    llvm::Value *rOp = instr->getOperand(1);
+
+    ref<Expr> lError = getError(executor, arguments[0], lOp);
+    ref<Expr> rError = getError(executor, arguments[1], rOp);
+
+    ref<Expr> extendedLeft = lError;
+    if (lError->getWidth() != arguments[0]->getWidth()) {
+      extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
     }
-    case llvm::Instruction::Sub: {
-      llvm::Value *lOp = instr->getOperand(0);
-      llvm::Value *rOp = instr->getOperand(1);
-
-      ref<Expr> lError = getError(executor, arguments[0], lOp);
-      ref<Expr> rError = getError(executor, arguments[1], rOp);
-
-      ref<Expr> extendedLeft = lError;
-      if (lError->getWidth() != arguments[0]->getWidth()) {
-        extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
-      }
-      ref<Expr> extendedRight = rError;
-      if (rError->getWidth() != arguments[1]->getWidth()) {
-        extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
-      }
-
-      ref<Expr> errorLeft = MulExpr::create(extendedLeft.get(), arguments[0]);
-      ref<Expr> errorRight = MulExpr::create(extendedRight.get(), arguments[1]);
-      ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
-      valueErrorMap[instr] = UDivExpr::create(resultError, result);
-      return valueErrorMap[instr];
+    ref<Expr> extendedRight = rError;
+    if (rError->getWidth() != arguments[1]->getWidth()) {
+      extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
     }
-    case llvm::Instruction::Mul: {
-      llvm::Value *lOp = instr->getOperand(0);
-      llvm::Value *rOp = instr->getOperand(1);
 
-      ref<Expr> lError = getError(executor, arguments[0], lOp);
-      ref<Expr> rError = getError(executor, arguments[1], rOp);
+    valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
+    return valueErrorMap[instr];
+  }
+  case llvm::Instruction::UDiv: {
+    llvm::Value *lOp = instr->getOperand(0);
+    llvm::Value *rOp = instr->getOperand(1);
 
-      ref<Expr> extendedLeft = lError;
-      if (lError->getWidth() != arguments[0]->getWidth()) {
-        extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
-      }
-      ref<Expr> extendedRight = rError;
-      if (rError->getWidth() != arguments[1]->getWidth()) {
-        extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
-      }
+    ref<Expr> lError = getError(executor, arguments[0], lOp);
+    ref<Expr> rError = getError(executor, arguments[1], rOp);
 
-      valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
-      return valueErrorMap[instr];
+    ref<Expr> extendedLeft = lError;
+    if (lError->getWidth() != arguments[0]->getWidth()) {
+      extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
     }
-    case llvm::Instruction::UDiv: {
-      llvm::Value *lOp = instr->getOperand(0);
-      llvm::Value *rOp = instr->getOperand(1);
-
-      ref<Expr> lError = getError(executor, arguments[0], lOp);
-      ref<Expr> rError = getError(executor, arguments[1], rOp);
-
-      ref<Expr> extendedLeft = lError;
-      if (lError->getWidth() != arguments[0]->getWidth()) {
-        extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
-      }
-      ref<Expr> extendedRight = rError;
-      if (rError->getWidth() != arguments[1]->getWidth()) {
-        extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
-      }
-
-      valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
-      return valueErrorMap[instr];
+    ref<Expr> extendedRight = rError;
+    if (rError->getWidth() != arguments[1]->getWidth()) {
+      extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
     }
-    case llvm::Instruction::SDiv: {
-      llvm::Value *lOp = instr->getOperand(0);
-      llvm::Value *rOp = instr->getOperand(1);
 
-      ref<Expr> lError = getError(executor, arguments[0], lOp);
-      ref<Expr> rError = getError(executor, arguments[1], rOp);
+    valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
+    return valueErrorMap[instr];
+  }
+  case llvm::Instruction::SDiv: {
+    llvm::Value *lOp = instr->getOperand(0);
+    llvm::Value *rOp = instr->getOperand(1);
 
-      ref<Expr> extendedLeft = lError;
-      if (lError->getWidth() != arguments[0]->getWidth()) {
-        extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
-      }
-      ref<Expr> extendedRight = rError;
-      if (rError->getWidth() != arguments[1]->getWidth()) {
-        extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
-      }
+    ref<Expr> lError = getError(executor, arguments[0], lOp);
+    ref<Expr> rError = getError(executor, arguments[1], rOp);
 
-      valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
-      return valueErrorMap[instr];
+    ref<Expr> extendedLeft = lError;
+    if (lError->getWidth() != arguments[0]->getWidth()) {
+      extendedLeft = ZExtExpr::create(lError, arguments[0]->getWidth());
     }
+    ref<Expr> extendedRight = rError;
+    if (rError->getWidth() != arguments[1]->getWidth()) {
+      extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
+    }
+
+    valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
+    return valueErrorMap[instr];
+  }
+  default: {
+    // By default, simply find error in one of the arguments
+    ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+    for (unsigned i = 0, s = arguments.size(); i < s; ++i) {
+      llvm::Value *v = instr->getOperand(i);
+      std::map<llvm::Value *, ref<Expr> >::iterator it = valueErrorMap.find(v);
+      if (it != valueErrorMap.end()) {
+        error = valueErrorMap[v];
+        break;
+      }
+    }
+    valueErrorMap[instr] = error;
+    return error;
+  }
   }
   return ConstantExpr::create(0, Expr::Int8);
+}
+
+void SymbolicError::executeStore(ref<Expr> address, ref<Expr> error) {
+  if (error.isNull())
+    return;
+
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    storedError[cp->getZExtValue()] = error;
+    return;
+  }
+  assert(!"non-constant address");
+}
+
+ref<Expr> SymbolicError::executeLoad(llvm::Value *value, ref<Expr> address) {
+  ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    std::map<uintptr_t, ref<Expr> >::iterator it =
+        storedError.find(cp->getZExtValue());
+    if (it != storedError.end()) {
+      error = it->second;
+    }
+  } else {
+    assert(!"non-constant address");
+  }
+  valueErrorMap[value] = error;
+  return error;
 }
 
 void SymbolicError::print(llvm::raw_ostream &os) const {
@@ -237,6 +279,15 @@ void SymbolicError::print(llvm::raw_ostream &os) const {
            ie = arrayErrorArrayMap.end();
        it != ie; ++it) {
     os << "[" << it->first->name << "," << it->second->name << "]\n";
+  }
+
+  os << "Store:\n";
+  for (std::map<uintptr_t, ref<Expr> >::const_iterator it = storedError.begin(),
+                                                       ie = storedError.end();
+       it != ie; ++it) {
+    os << it->first << ": ";
+    it->second->print(os);
+    os << "\n";
   }
 
   os << "Output String:\n";

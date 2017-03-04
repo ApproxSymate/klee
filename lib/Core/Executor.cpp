@@ -1226,18 +1226,24 @@ void Executor::stepInstruction(ExecutionState &state) {
     haltExecution = true;
 }
 
-void Executor::executeCall(ExecutionState &state, 
-                           KInstruction *ki,
-                           Function *f,
-                           std::vector< ref<Expr> > &arguments) {
+void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
+                           std::vector<Cell> &arguments) {
   Instruction *i = ki->inst;
   if (f && f->isDeclaration()) {
     switch(f->getIntrinsicID()) {
-    case Intrinsic::not_intrinsic:
+    case Intrinsic::not_intrinsic: {
+      // Here we replace cell vector with expression vector. We assume they are
+      // short.
+      std::vector<ref<Expr> > exprArguments;
+      for (std::vector<Cell>::iterator it = arguments.begin(),
+                                       ie = arguments.end();
+           it != ie; ++it) {
+        exprArguments.push_back(it->value);
+      }
       // state may be destroyed by this call, cannot touch
-      callExternalFunction(state, ki, f, arguments);
+      callExternalFunction(state, ki, f, exprArguments);
       break;
-        
+    }
       // va_arg is handled by caller and intrinsic lowering, see comment for
       // ExecutionState::varargs
     case Intrinsic::vastart:  {
@@ -1251,28 +1257,39 @@ void Executor::executeCall(ExecutionState &state,
       // size. This happens to work fir x86-32 and x86-64, however.
       Expr::Width WordSize = Context::get().getPointerWidth();
       if (WordSize == Expr::Int32) {
-        executeMemoryOperation(state, true, arguments[0], 
-                               sf.varargs->getBaseExpr(), 0);
+        executeMemoryOperation(state, true, arguments[0],
+                               sf.varargs->getBaseExpr(),
+                               ConstantExpr::create(0, Expr::Int8), 0);
       } else {
         assert(WordSize == Expr::Int64 && "Unknown word size!");
 
         // X86-64 has quite complicated calling convention. However,
         // instead of implementing it, we can do a simple hack: just
         // make a function believe that all varargs are on stack.
-        executeMemoryOperation(state, true, arguments[0],
-                               ConstantExpr::create(48, 32), 0); // gp_offset
-        executeMemoryOperation(state, true,
-                               AddExpr::create(arguments[0], 
-                                               ConstantExpr::create(4, 64)),
-                               ConstantExpr::create(304, 32), 0); // fp_offset
-        executeMemoryOperation(state, true,
-                               AddExpr::create(arguments[0], 
-                                               ConstantExpr::create(8, 64)),
-                               sf.varargs->getBaseExpr(), 0); // overflow_arg_area
-        executeMemoryOperation(state, true,
-                               AddExpr::create(arguments[0], 
-                                               ConstantExpr::create(16, 64)),
-                               ConstantExpr::create(0, 64), 0); // reg_save_area
+        executeMemoryOperation(
+            state, true, arguments[0], ConstantExpr::create(48, 32),
+            ConstantExpr::create(0, Expr::Int8), 0); // gp_offset
+        Cell c1;
+        c1.value =
+            AddExpr::create(arguments[0].value, ConstantExpr::create(4, 64));
+        c1.error = arguments[0].error;
+        executeMemoryOperation(state, true, c1, ConstantExpr::create(304, 32),
+                               ConstantExpr::create(0, Expr::Int8),
+                               0); // fp_offset
+        Cell c2;
+        c2.value =
+            AddExpr::create(arguments[0].value, ConstantExpr::create(8, 64));
+        c2.error = arguments[0].error;
+        executeMemoryOperation(state, true, c2, sf.varargs->getBaseExpr(),
+                               ConstantExpr::create(0, Expr::Int8),
+                               0); // overflow_arg_area
+        Cell c3;
+        c3.value =
+            AddExpr::create(arguments[0].value, ConstantExpr::create(16, 64));
+        c3.error = arguments[0].error;
+        executeMemoryOperation(state, true, c3, ConstantExpr::create(0, 64),
+                               ConstantExpr::create(0, Expr::Int8),
+                               0); // reg_save_area
       }
       break;
     }
@@ -1336,9 +1353,9 @@ void Executor::executeCall(ExecutionState &state,
         // FIXME: This is really specific to the architecture, not the pointer
         // size. This happens to work for x86-32 and x86-64, however.
         if (WordSize == Expr::Int32) {
-          size += Expr::getMinBytesForWidth(arguments[i]->getWidth());
+          size += Expr::getMinBytesForWidth(arguments[i].value->getWidth());
         } else {
-          Expr::Width argWidth = arguments[i]->getWidth();
+          Expr::Width argWidth = arguments[i].value->getWidth();
           // AMD64-ABI 3.5.7p5: Step 7. Align l->overflow_arg_area upwards to a
           // 16 byte boundary if alignment needed by type exceeds 8 byte
           // boundary.
@@ -1374,16 +1391,16 @@ void Executor::executeCall(ExecutionState &state,
           // FIXME: This is really specific to the architecture, not the pointer
           // size. This happens to work for x86-32 and x86-64, however.
           if (WordSize == Expr::Int32) {
-            os->write(offset, arguments[i]);
-            offset += Expr::getMinBytesForWidth(arguments[i]->getWidth());
+            os->write(offset, arguments[i].value);
+            offset += Expr::getMinBytesForWidth(arguments[i].value->getWidth());
           } else {
             assert(WordSize == Expr::Int64 && "Unknown word size!");
 
-            Expr::Width argWidth = arguments[i]->getWidth();
+            Expr::Width argWidth = arguments[i].value->getWidth();
             if (argWidth > Expr::Int64) {
               offset = llvm::RoundUpToAlignment(offset, 16);
             }
-            os->write(offset, arguments[i]);
+            os->write(offset, arguments[i].value);
             offset += llvm::RoundUpToAlignment(argWidth, WordSize) / 8;
           }
         }
@@ -1391,8 +1408,8 @@ void Executor::executeCall(ExecutionState &state,
     }
 
     unsigned numFormals = f->arg_size();
-    for (unsigned i=0; i<numFormals; ++i) 
-      bindArgument(kf, i, state, arguments[i]);
+    for (unsigned i = 0; i < numFormals; ++i)
+      bindArgument(kf, i, state, arguments[i].value);
   }
 }
 
@@ -1761,11 +1778,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       break;
     }
     // evaluate arguments
-    std::vector< ref<Expr> > arguments;
+    std::vector<Cell> arguments;
     arguments.reserve(numArgs);
 
     for (unsigned j=0; j<numArgs; ++j)
-      arguments.push_back(eval(ki, j+1, state).value);
+      arguments.push_back(eval(ki, j + 1, state));
 
     if (f) {
       const FunctionType *fType = 
@@ -1781,11 +1798,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
         // XXX this really needs thought and validation
         unsigned i=0;
-        for (std::vector< ref<Expr> >::iterator
-               ai = arguments.begin(), ie = arguments.end();
+        for (std::vector<Cell>::iterator ai = arguments.begin(),
+                                         ie = arguments.end();
              ai != ie; ++ai) {
-          Expr::Width to, from = (*ai)->getWidth();
-            
+          Expr::Width to, from = ai->value->getWidth();
+
           if (i<fType->getNumParams()) {
             to = getWidthForLLVMType(fType->getParamType(i));
 
@@ -1799,9 +1816,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	      bool isSExt = cs.paramHasAttr(i+1, llvm::Attribute::SExt);
 #endif
               if (isSExt) {
-                arguments[i] = SExtExpr::create(arguments[i], to);
+                arguments[i].value = SExtExpr::create(arguments[i].value, to);
               } else {
-                arguments[i] = ZExtExpr::create(arguments[i], to);
+                arguments[i].value = ZExtExpr::create(arguments[i].value, to);
               }
             }
           }
@@ -1886,8 +1903,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     // Arithmetic / logical
 
   case Instruction::Add: {
-    llvm::errs()<<"Add executed\n";
-	  ref<Expr> left = eval(ki, 0, state).value;
+    ref<Expr> left = eval(ki, 0, state).value;
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = AddExpr::create(left, right);
 
@@ -1915,8 +1931,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
  
   case Instruction::Mul: {
-    llvm::errs()<<"Mul executed\n";
-	  ref<Expr> left = eval(ki, 0, state).value;
+    ref<Expr> left = eval(ki, 0, state).value;
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = MulExpr::create(left, right);
 
@@ -1962,10 +1977,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = URemExpr::create(left, right);
 
-    llvm::errs()<<"Error is not propagated for instruction ";
-    llvm::errs()<<ki->inst->getName();
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
  
@@ -1974,10 +1991,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = SRemExpr::create(left, right);
 
-    llvm::errs()<<"Error is not propagated for instruction ";
-    llvm::errs()<<ki->inst->getName();
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -1986,10 +2005,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = AndExpr::create(left, right);
 
-    llvm::errs()<<"Error is not propagated for instruction ";
-    llvm::errs()<<ki->inst->getName();
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -1998,10 +2019,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = OrExpr::create(left, right);
 
-    llvm::errs()<<"Error is not propagated for instruction ";
-    llvm::errs()<<ki->inst->getName();
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2010,10 +2033,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = XorExpr::create(left, right);
 
-    llvm::errs()<<"Error is not propagated for instruction ";
-    llvm::errs()<<ki->inst->getName();
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2022,10 +2047,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = ShlExpr::create(left, right);
 
-    llvm::errs()<<"Error is not propagated for instruction ";
-    llvm::errs()<<ki->inst->getName();
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2034,10 +2061,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = LShrExpr::create(left, right);
 
-    llvm::errs()<<"Error is not propagated for instruction ";
-    llvm::errs()<<ki->inst->getName();
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2046,10 +2074,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> right = eval(ki, 1, state).value;
     ref<Expr> result = AShrExpr::create(left, right);
 
-    llvm::errs()<<"Error is not propagated for instruction ";
-    llvm::errs()<<ki->inst->getName();
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2065,7 +2095,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = EqExpr::create(left, right);
 
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2073,7 +2108,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = NeExpr::create(left, right);
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2081,7 +2122,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = UgtExpr::create(left, right);
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2089,7 +2136,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = UgeExpr::create(left, right);
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2097,7 +2150,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = UltExpr::create(left, right);
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2105,7 +2164,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = UleExpr::create(left, right);
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2113,7 +2178,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = SgtExpr::create(left, right);
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2121,7 +2192,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = SgeExpr::create(left, right);
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2129,7 +2206,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = SltExpr::create(left, right);
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2137,7 +2220,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = SleExpr::create(left, right);
-      bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
+
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
       break;
     }
 
@@ -2163,20 +2252,24 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::Load: {
-    ref<Expr> base = eval(ki, 0, state).value;
-    executeMemoryOperation(state, false, base, 0, ki);
+    Cell cell = eval(ki, 0, state);
+    executeMemoryOperation(state, false, cell, 0,
+                           ConstantExpr::create(0, Expr::Int8), ki);
     break;
   }
   case Instruction::Store: {
-    ref<Expr> base = eval(ki, 1, state).value;
-    ref<Expr> value = eval(ki, 0, state).value;
-    executeMemoryOperation(state, true, base, value, 0);
+    Cell base = eval(ki, 1, state);
+    Cell valueCell = eval(ki, 0, state);
+    ref<Expr> value = valueCell.value;
+    ref<Expr> error = valueCell.error;
+    executeMemoryOperation(state, true, base, value, error, 0);
     break;
   }
 
   case Instruction::GetElementPtr: {
     KGEPInstruction *kgepi = static_cast<KGEPInstruction*>(ki);
-    ref<Expr> base = eval(ki, 0, state).value;
+    ref<Expr> oldBase = eval(ki, 0, state).value;
+    ref<Expr> base = oldBase;
 
     for (std::vector< std::pair<unsigned, uint64_t> >::iterator 
            it = kgepi->indices.begin(), ie = kgepi->indices.end(); 
@@ -2190,54 +2283,81 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     if (kgepi->offset)
       base = AddExpr::create(base,
                              Expr::createPointer(kgepi->offset));
-    bindLocal(ki, state, base, ConstantExpr::create(0, Expr::Int8));
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(oldBase);
+
+    bindLocal(ki, state, base,
+              state.symbolicError->propagateError(this, i, base, arguments));
     break;
   }
 
     // Conversion
   case Instruction::Trunc: {
     CastInst *ci = cast<CastInst>(i);
-    ref<Expr> result = ExtractExpr::create(eval(ki, 0, state).value,
-                                           0,
-                                           getWidthForLLVMType(ci->getType()));
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> result =
+        ExtractExpr::create(c.value, 0, getWidthForLLVMType(ci->getType()));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(c.value);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
   case Instruction::ZExt: {
     CastInst *ci = cast<CastInst>(i);
-    ref<Expr> result = ZExtExpr::create(eval(ki, 0, state).value,
-                                        getWidthForLLVMType(ci->getType()));
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> result =
+        ZExtExpr::create(c.value, getWidthForLLVMType(ci->getType()));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(c.value);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
   case Instruction::SExt: {
     CastInst *ci = cast<CastInst>(i);
-    ref<Expr> result = SExtExpr::create(eval(ki, 0, state).value,
-                                        getWidthForLLVMType(ci->getType()));
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> result =
+        SExtExpr::create(c.value, getWidthForLLVMType(ci->getType()));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(c.value);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
   case Instruction::IntToPtr: {
     CastInst *ci = cast<CastInst>(i);
     Expr::Width pType = getWidthForLLVMType(ci->getType());
-    ref<Expr> arg = eval(ki, 0, state).value;
-    bindLocal(ki, state, ZExtExpr::create(arg, pType),
-              ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> arg = c.value;
+    ref<Expr> result = ZExtExpr::create(arg, pType);
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   } 
   case Instruction::PtrToInt: {
     CastInst *ci = cast<CastInst>(i);
     Expr::Width iType = getWidthForLLVMType(ci->getType());
     ref<Expr> arg = eval(ki, 0, state).value;
-    bindLocal(ki, state, ZExtExpr::create(arg, iType),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ZExtExpr::create(arg, iType);
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
   case Instruction::BitCast: {
-    ref<Expr> result = eval(ki, 0, state).value;
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    Cell c = eval(ki, 0, state);
+    ref<Expr> result = c.value;
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(result);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2259,8 +2379,15 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     llvm::APFloat Res(left->getAPValue());
     Res.add(APFloat(right->getAPValue()), APFloat::rmNearestTiesToEven);
 #endif
-    bindLocal(ki, state, ConstantExpr::alloc(Res.bitcastToAPInt()),
-              ConstantExpr::create(0, Expr::Int8));
+
+    ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2279,8 +2406,14 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     llvm::APFloat Res(left->getAPValue());
     Res.subtract(APFloat(right->getAPValue()), APFloat::rmNearestTiesToEven);
 #endif
-    bindLocal(ki, state, ConstantExpr::alloc(Res.bitcastToAPInt()),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
  
@@ -2300,8 +2433,14 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     llvm::APFloat Res(left->getAPValue());
     Res.multiply(APFloat(right->getAPValue()), APFloat::rmNearestTiesToEven);
 #endif
-    bindLocal(ki, state, ConstantExpr::alloc(Res.bitcastToAPInt()),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2321,8 +2460,14 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     llvm::APFloat Res(left->getAPValue());
     Res.divide(APFloat(right->getAPValue()), APFloat::rmNearestTiesToEven);
 #endif
-    bindLocal(ki, state, ConstantExpr::alloc(Res.bitcastToAPInt()),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2342,8 +2487,14 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     llvm::APFloat Res(left->getAPValue());
     Res.mod(APFloat(right->getAPValue()), APFloat::rmNearestTiesToEven);
 #endif
-    bindLocal(ki, state, ConstantExpr::alloc(Res.bitcastToAPInt()),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2364,8 +2515,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     Res.convert(*fpWidthToSemantics(resultType),
                 llvm::APFloat::rmNearestTiesToEven,
                 &losesInfo);
-    bindLocal(ki, state, ConstantExpr::alloc(Res),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ConstantExpr::alloc(Res);
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2385,8 +2541,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     Res.convert(*fpWidthToSemantics(resultType),
                 llvm::APFloat::rmNearestTiesToEven,
                 &losesInfo);
-    bindLocal(ki, state, ConstantExpr::alloc(Res),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ConstantExpr::alloc(Res);
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2407,8 +2568,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     bool isExact = true;
     Arg.convertToInteger(&value, resultType, false,
                          llvm::APFloat::rmTowardZero, &isExact);
-    bindLocal(ki, state, ConstantExpr::alloc(value, resultType),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ConstantExpr::alloc(value, resultType);
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2429,8 +2595,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     bool isExact = true;
     Arg.convertToInteger(&value, resultType, true,
                          llvm::APFloat::rmTowardZero, &isExact);
-    bindLocal(ki, state, ConstantExpr::alloc(value, resultType),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ConstantExpr::alloc(value, resultType);
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2445,9 +2616,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     llvm::APFloat f(*semantics, 0);
     f.convertFromAPInt(arg->getAPValue(), false,
                        llvm::APFloat::rmNearestTiesToEven);
+    ref<Expr> result = ConstantExpr::alloc(f);
 
-    bindLocal(ki, state, ConstantExpr::alloc(f),
-              ConstantExpr::create(0, Expr::Int8));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2462,9 +2637,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     llvm::APFloat f(*semantics, 0);
     f.convertFromAPInt(arg->getAPValue(), true,
                        llvm::APFloat::rmNearestTiesToEven);
+    ref<Expr> result = ConstantExpr::alloc(f);
 
-    bindLocal(ki, state, ConstantExpr::alloc(f),
-              ConstantExpr::create(0, Expr::Int8));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(arg);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
 
@@ -2562,8 +2741,14 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       break;
     }
 
-    bindLocal(ki, state, ConstantExpr::alloc(Result, Expr::Bool),
-              ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> result = ConstantExpr::alloc(Result, Expr::Bool);
+
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(left);
+    arguments.push_back(right);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
   case Instruction::InsertValue: {
@@ -2590,7 +2775,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     else
       result = val;
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(agg);
+    arguments.push_back(val);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
   case Instruction::ExtractValue: {
@@ -2600,7 +2790,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
     ref<Expr> result = ExtractExpr::create(agg, kgepi->offset*8, getWidthForLLVMType(i->getType()));
 
-    bindLocal(ki, state, result, ConstantExpr::create(0, Expr::Int8));
+    std::vector<ref<Expr> > arguments;
+    arguments.push_back(agg);
+
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, arguments));
     break;
   }
  
@@ -3365,11 +3559,11 @@ void Executor::resolveExact(ExecutionState &state,
   }
 }
 
-void Executor::executeMemoryOperation(ExecutionState &state,
-                                      bool isWrite,
-                                      ref<Expr> address,
-                                      ref<Expr> value /* undef if read */,
-                                      KInstruction *target /* undef if write */) {
+void Executor::executeMemoryOperation(
+    ExecutionState &state, bool isWrite, Cell &cell,
+    ref<Expr> value /* undef if read */, ref<Expr> error /* undef if read */,
+    KInstruction *target /* undef if write */) {
+  ref<Expr> address = cell.value;
   Expr::Width type = (isWrite ? value->getWidth() : 
                      getWidthForLLVMType(target->inst->getType()));
   unsigned bytes = Expr::getMinBytesForWidth(type);
@@ -3422,14 +3616,17 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         } else {
           ObjectState *wos = state.addressSpace.getWriteable(mo, os);
           wos->write(offset, value);
-        }          
+          state.symbolicError->executeStore(address, error);
+        }
       } else {
         ref<Expr> result = os->read(offset, type);
         
         if (interpreterOpts.MakeConcreteSymbolic)
           result = replaceReadWithSymbolic(state, result);
 
-        bindLocal(target, state, result, ConstantExpr::create(0, Expr::Int8));
+        ref<Expr> resultError =
+            state.symbolicError->executeLoad(target->inst, address);
+        bindLocal(target, state, result, resultError);
       }
 
       return;
@@ -3466,10 +3663,13 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         } else {
           ObjectState *wos = bound->addressSpace.getWriteable(mo, os);
           wos->write(mo->getOffsetExpr(address), value);
+          state.symbolicError->executeStore(address, error);
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
-        bindLocal(target, *bound, result, ConstantExpr::create(0, Expr::Int8));
+        ref<Expr> resultError =
+            state.symbolicError->executeLoad(target->inst, address);
+        bindLocal(target, *bound, result, resultError);
       }
     }
 
