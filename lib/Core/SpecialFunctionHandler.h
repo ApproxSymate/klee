@@ -131,6 +131,7 @@ namespace klee {
     HANDLER(handleSetForking);
     HANDLER(handleSilentExit);
     HANDLER(handleStackTrace);
+    HANDLER(handleTrackError);
     HANDLER(handleUnderConstrained);
     HANDLER(handleWarning);
     HANDLER(handleWarningOnce);

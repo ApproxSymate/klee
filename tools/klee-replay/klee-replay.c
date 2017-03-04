@@ -416,6 +416,8 @@ unsigned klee_is_symbolic(uintptr_t x) {
 
 void klee_bound_error(uintptr_t x, double bound) { ; }
 
+void klee_track_error(void *addr, const char *name) { ; }
+
 void klee_prefer_cex(void *buffer, uintptr_t condition) {
   ;
 }

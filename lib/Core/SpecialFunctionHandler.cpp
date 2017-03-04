@@ -103,6 +103,7 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
   add("klee_print_range", handlePrintRange, false),
   add("klee_set_forking", handleSetForking, false),
   add("klee_stack_trace", handleStackTrace, false),
+  add("klee_track_error", handleTrackError, false),
   add("klee_warning", handleWarning, false),
   add("klee_warning_once", handleWarningOnce, false),
   add("klee_alias_function", handleAliasFunction, false),
@@ -437,6 +438,35 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
   }
 
   assert(!"second argument of klee_bound_error must be constant");
+}
+
+void
+SpecialFunctionHandler::handleTrackError(ExecutionState &state,
+                                         KInstruction *target,
+                                         std::vector<ref<Expr> > &arguments) {
+  std::string name;
+
+  // FIXME: For backwards compatibility, we should eventually enforce the
+  // correct arguments.
+  if (arguments.size() == 1) {
+    name = "unnamed_error";
+  } else {
+    // FIXME: Should be a user.err, not an assert.
+    assert(arguments.size() == 2 &&
+           "invalid number of arguments to klee_track_error");
+    name = readStringAtAddress(state, arguments[1]);
+  }
+
+  if (ConstantExpr *ac = llvm::dyn_cast<ConstantExpr>(arguments.at(0))) {
+    uintptr_t address = reinterpret_cast<uintptr_t>(ac->getZExtValue());
+    executor.executeStoreError(state, reinterpret_cast<uintptr_t>(address),
+                               name);
+    return;
+  }
+
+  executor.terminateStateOnError(
+      state, "first argument of track_error must be a constant address",
+      "user.err");
 }
 
 void SpecialFunctionHandler::handlePreferCex(ExecutionState &state,

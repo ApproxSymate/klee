@@ -30,7 +30,8 @@ ref<Expr> SymbolicError::getError(Executor *executor, ref<Expr> valueExpr,
         llvm::dyn_cast<ReadExpr>(concatExpr->getLeft())->updates.root;
       const Array *errorArray = arrayErrorArrayMap[concatArray];
       if (!errorArray) {
-        std::string errorName("_fractional_error_" +
+        // The error expression is not found; use an unspecified value
+        std::string errorName("_unspecified_error_" +
                               llvm::dyn_cast<ReadExpr>(concatExpr->getLeft())
                                   ->updates.root->name);
         const Array *newErrorArray =
@@ -46,7 +47,8 @@ ref<Expr> SymbolicError::getError(Executor *executor, ref<Expr> valueExpr,
       const Array *readArray = readExpr->updates.root;
       const Array *errorArray = arrayErrorArrayMap[readArray];
       if (!errorArray) {
-        std::string errorName("_fractional_error_" +
+        // The error expression is not found; use an unspecified value
+        std::string errorName("_unspecified_error_" +
                               readExpr->updates.root->name);
         const Array *newErrorArray =
             errorArrayCache.CreateArray(errorName, Expr::Int8);

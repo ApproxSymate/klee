@@ -3769,6 +3769,24 @@ void Executor::executeMakeSymbolic(ExecutionState &state,
   }
 }
 
+void Executor::executeStoreError(ExecutionState &state, const uintptr_t address,
+                                 const std::string &name) {
+  // Find a unique name for this array.  First try the original name,
+  // or if that fails try adding a unique identifier. Shamelessly copied from
+  // executeMakeSymbolic.
+  unsigned id = 0;
+  std::string uniqueName = name;
+  while (!state.arrayNames.insert(uniqueName).second) {
+    uniqueName = name + "_" + llvm::utostr(++id);
+  }
+  const Array *array = arrayCache.CreateArray(uniqueName, Expr::Int8);
+  ref<Expr> errorExpr = ReadExpr::create(
+      UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
+  ref<Expr> addressExpr = Expr::createPointer(address);
+
+  state.symbolicError->executeStore(addressExpr, errorExpr);
+}
+
 /***/
 
 void Executor::runFunctionAsMain(Function *f,

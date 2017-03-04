@@ -158,6 +158,9 @@ extern "C" {
   /* Outputs floating-point error expression */
   void klee_bound_error(uintptr_t n, double bound);
 
+  /* Track error amount of a memory object */
+  void klee_track_error(void *addr, const char *name);
+
 #ifdef __cplusplus
 }
 #endif
