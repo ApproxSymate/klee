@@ -156,7 +156,7 @@ extern "C" {
   void klee_merge();
 
   /* Outputs floating-point error expression */
-  void klee_output_error(uintptr_t n);
+  void klee_bound_error(uintptr_t n, double bound);
 
 #ifdef __cplusplus
 }

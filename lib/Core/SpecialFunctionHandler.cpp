@@ -96,7 +96,7 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
   add("klee_make_symbolic", handleMakeSymbolic, false),
   add("klee_mark_global", handleMarkGlobal, false),
   add("klee_merge", handleMerge, false),
-  add("klee_output_error", handleOutputError, false),
+  add("klee_bound_error", handleBoundError, false),
   add("klee_prefer_cex", handlePreferCex, false),
   add("klee_posix_prefer_cex", handlePosixPreferCex, false),
   add("klee_print_expr", handlePrintExpr, false),
@@ -421,13 +421,22 @@ void SpecialFunctionHandler::handleIsSymbolic(ExecutionState &state,
 }
 
 void
-SpecialFunctionHandler::handleOutputError(ExecutionState &state,
-                                          KInstruction *target,
-                                          std::vector<ref<Expr> > &arguments) {
-  assert(arguments.size() == 1 &&
-         "invalid number of arguments to klee_output_error");
+SpecialFunctionHandler::handleBoundError(ExecutionState &state,
+                                         KInstruction *target,
+                                         std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 2 &&
+         "invalid number of arguments to klee_bound_error");
 
-  state.symbolicError->addOutput(target->inst);
+  if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(arguments.at(1))) {
+    uint64_t intValue = ce->getZExtValue();
+    double *boundPtr = reinterpret_cast<double *>(&intValue);
+    double bound = *boundPtr;
+
+    state.symbolicError->outputErrorBound(target->inst, bound);
+    return;
+  }
+
+  assert(!"second argument of klee_bound_error must be constant");
 }
 
 void SpecialFunctionHandler::handlePreferCex(ExecutionState &state,
