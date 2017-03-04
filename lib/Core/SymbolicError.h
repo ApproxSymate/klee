@@ -40,7 +40,7 @@ public:
 
   ~SymbolicError();
 
-  void addOutput(llvm::Instruction *inst);
+  void outputErrorBound(llvm::Instruction *inst);
 
   ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
                            ref<Expr> result,

@@ -76,7 +76,7 @@ ref<Expr> SymbolicError::getError(Executor *executor, ref<Expr> valueExpr,
 
 SymbolicError::~SymbolicError() {}
 
-void SymbolicError::addOutput(llvm::Instruction *inst) {
+void SymbolicError::outputErrorBound(llvm::Instruction *inst) {
   ref<Expr> e =
       valueErrorMap[llvm::dyn_cast<llvm::Instruction>(inst->getOperand(0))];
   if (e.isNull()) {
