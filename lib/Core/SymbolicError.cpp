@@ -143,10 +143,8 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
     ref<Expr> errorLeft = MulExpr::create(extendedLeft, arguments[0]);
     ref<Expr> errorRight = MulExpr::create(extendedRight, arguments[1]);
     ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
-    if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(result)) {
-      if (ce->getZExtValue())
-        result = UDivExpr::create(resultError, result);
-    }
+
+    result = result->isZero() ? result : UDivExpr::create(resultError, result);
     valueErrorMap[instr] = result;
     return result;
   }
@@ -169,8 +167,10 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
     ref<Expr> errorLeft = MulExpr::create(extendedLeft.get(), arguments[0]);
     ref<Expr> errorRight = MulExpr::create(extendedRight.get(), arguments[1]);
     ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
-    valueErrorMap[instr] = UDivExpr::create(resultError, result);
-    return valueErrorMap[instr];
+
+    result = result->isZero() ? result : UDivExpr::create(resultError, result);
+    valueErrorMap[instr] = result;
+    return result;
   }
   case llvm::Instruction::Mul: {
     llvm::Value *lOp = instr->getOperand(0);
