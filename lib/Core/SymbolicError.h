@@ -1,9 +1,11 @@
-/*
- * SymbolicError.h
- *
- *  Created on: 18 Aug 2016
- *      Author: himeshi
- */
+//===-- SymbolicError.h ---------------------------------------------------===//
+//
+// The KLEE Symbolic Virtual Machine with Numerical Error Analysis Extension
+//
+// This file is distributed under the University of Illinois Open Source
+// License. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
 
 #ifndef KLEE_SYMBOLICERROR_H_
 #define KLEE_SYMBOLICERROR_H_

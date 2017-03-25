@@ -1,9 +1,11 @@
-/*
- * SymbolicError.cpp
- *
- *  Created on: 18 Aug 2016
- *      Author: himeshi
- */
+//===-- SymbolicError.cpp -------------------------------------------------===//
+//
+// The KLEE Symbolic Virtual Machine with Numerical Error Analysis Extension
+//
+// This file is distributed under the University of Illinois Open Source
+// License. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
 #include "SymbolicError.h"
 
 #include "llvm/DebugInfo.h"
