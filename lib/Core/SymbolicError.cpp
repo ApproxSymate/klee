@@ -144,7 +144,9 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
     ref<Expr> errorRight = MulExpr::create(extendedRight, arguments[1]);
     ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
 
-    result = result->isZero() ? result : UDivExpr::create(resultError, result);
+    result = ExtractExpr::create(
+        result->isZero() ? result : UDivExpr::create(resultError, result), 0,
+        Expr::Int8);
     valueErrorMap[instr] = result;
     return result;
   }
@@ -168,7 +170,9 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
     ref<Expr> errorRight = MulExpr::create(extendedRight.get(), arguments[1]);
     ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
 
-    result = result->isZero() ? result : UDivExpr::create(resultError, result);
+    result = ExtractExpr::create(
+        result->isZero() ? result : UDivExpr::create(resultError, result), 0,
+        Expr::Int8);
     valueErrorMap[instr] = result;
     return result;
   }
@@ -188,8 +192,10 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
     }
 
-    valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
-    return valueErrorMap[instr];
+    result = ExtractExpr::create(AddExpr::create(extendedLeft, extendedRight),
+                                 0, Expr::Int8);
+    valueErrorMap[instr] = result;
+    return result;
   }
   case llvm::Instruction::UDiv: {
     llvm::Value *lOp = instr->getOperand(0);
@@ -207,8 +213,10 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
     }
 
-    valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
-    return valueErrorMap[instr];
+    result = ExtractExpr::create(AddExpr::create(extendedLeft, extendedRight),
+                                 0, Expr::Int8);
+    valueErrorMap[instr] = result;
+    return result;
   }
   case llvm::Instruction::SDiv: {
     llvm::Value *lOp = instr->getOperand(0);
@@ -226,8 +234,10 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
     }
 
-    valueErrorMap[instr] = AddExpr::create(extendedLeft, extendedRight);
-    return valueErrorMap[instr];
+    result = ExtractExpr::create(AddExpr::create(extendedLeft, extendedRight),
+                                 0, Expr::Int8);
+    valueErrorMap[instr] = result;
+    return result;
   }
   default: {
     // By default, simply find error in one of the arguments
@@ -240,6 +250,8 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
         break;
       }
     }
+    if (error->getWidth() > Expr::Int8)
+      error = ExtractExpr::create(error, 0, Expr::Int8);
     valueErrorMap[instr] = error;
     return error;
   }
