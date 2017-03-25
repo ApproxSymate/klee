@@ -1113,7 +1113,9 @@ const Cell& Executor::eval(KInstruction *ki, unsigned index,
   // Determine if this is a constant or not.
   if (vnumber < 0) {
     unsigned index = -vnumber - 2;
-    return kmodule->constantTable[index];
+    Cell &ret = kmodule->constantTable[index];
+    ret.error = ConstantExpr::create(0, Expr::Int8);
+    return ret;
   } else {
     unsigned index = vnumber;
     StackFrame &sf = state.stack.back();
