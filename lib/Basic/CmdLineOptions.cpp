@@ -83,10 +83,15 @@ llvm::cl::list<QueryLoggingSolverType> queryLoggingOptions(
 );
 
 llvm::cl::opt<bool>
-DebugFPError("debug-fp-error",
-             llvm::cl::desc(
-                 "Output debugging trace for floating-point error propagation"),
-             llvm::cl::init(false));
+FloatingPointError("floating-point-error",
+                   llvm::cl::desc("Switch on floating-point error analysis"),
+                   llvm::cl::init(false));
+
+llvm::cl::opt<bool> DebugFloatingPointError(
+    "debug-floating-point-error",
+    llvm::cl::desc(
+        "Output debugging trace for floating-point error propagation"),
+    llvm::cl::init(false));
 
 #ifdef ENABLE_METASMT
 
