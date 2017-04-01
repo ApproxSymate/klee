@@ -176,3 +176,8 @@ int klee_range(int begin, int end, const char* name) {
 void klee_print_expr(const char *msg, ...) { }
 
 void klee_set_forking(unsigned enable) { }
+
+/* Intrinsics for numerical precision features */
+void klee_bound_error(uintptr_t n, double bound) {}
+
+void klee_track_error(void *addr, const char *name) {}
