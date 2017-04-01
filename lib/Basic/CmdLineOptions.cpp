@@ -83,14 +83,13 @@ llvm::cl::list<QueryLoggingSolverType> queryLoggingOptions(
 );
 
 llvm::cl::opt<bool>
-FloatingPointError("floating-point-error",
-                   llvm::cl::desc("Switch on floating-point error analysis"),
-                   llvm::cl::init(false));
+PrecisionError("precision",
+               llvm::cl::desc("Switch on numerical precision analysis"),
+               llvm::cl::init(false));
 
-llvm::cl::opt<bool> DebugFloatingPointError(
-    "debug-floating-point-error",
-    llvm::cl::desc(
-        "Output debugging trace for floating-point error propagation"),
+llvm::cl::opt<bool> DebugPrecision(
+    "debug-precision",
+    llvm::cl::desc("Output debugging trace for numerical precision analysis"),
     llvm::cl::init(false));
 
 #ifdef ENABLE_METASMT

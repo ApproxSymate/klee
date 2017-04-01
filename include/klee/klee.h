@@ -155,7 +155,7 @@ extern "C" {
   /* Merge current states together if possible */
   void klee_merge();
 
-  /* Outputs floating-point error expression */
+  /* Outputs precision error expression */
   void klee_bound_error(uintptr_t n, double bound);
 
   /* Track error amount of a memory object */

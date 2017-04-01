@@ -2411,7 +2411,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     // Floating point instructions
 
   case Instruction::FAdd: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = AddExpr::create(left, right);
@@ -2454,7 +2454,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FSub: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = SubExpr::create(left, right);
@@ -2496,7 +2496,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FMul: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = MulExpr::create(left, right);
@@ -2536,7 +2536,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FDiv: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = SDivExpr::create(left, right);
@@ -2580,7 +2580,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FRem: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
       ref<Expr> result = SRemExpr::create(left, right);
@@ -2622,7 +2622,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FPTrunc: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       CastInst *ci = cast<CastInst>(i);
       Cell c = eval(ki, 0, state);
       ref<Expr> result =
@@ -2661,7 +2661,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FPExt: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       CastInst *ci = cast<CastInst>(i);
       Cell c = eval(ki, 0, state);
       ref<Expr> result =
@@ -2698,7 +2698,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FPToUI: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       // We simply assume equality
       ref<Expr> result = eval(ki, 0, state).value;
       std::vector<ref<Expr> > arguments;
@@ -2735,7 +2735,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FPToSI: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       // We simply assume equality
       ref<Expr> result = eval(ki, 0, state).value;
       std::vector<ref<Expr> > arguments;
@@ -2772,7 +2772,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::UIToFP: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       // We simply assume equality
       ref<Expr> result = eval(ki, 0, state).value;
       std::vector<ref<Expr> > arguments;
@@ -2802,7 +2802,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::SIToFP: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       // We simply assume equality
       ref<Expr> result = eval(ki, 0, state).value;
       std::vector<ref<Expr> > arguments;
@@ -2832,7 +2832,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FCmp: {
-    if (FloatingPointError) {
+    if (PrecisionError) {
       FCmpInst *fi = cast<FCmpInst>(i);
       ref<Expr> left;
       ref<Expr> right;
@@ -3389,7 +3389,7 @@ void Executor::run(ExecutionState &initialState) {
     KInstruction *ki = state.pc;
     stepInstruction(state);
 
-    if (DebugFloatingPointError) {
+    if (DebugPrecision) {
       llvm::errs() << "\n------------------------------------\n";
       llvm::errs() << "Executing: ";
       ki->inst->dump();
@@ -3397,7 +3397,7 @@ void Executor::run(ExecutionState &initialState) {
 
     executeInstruction(state, ki);
 
-    if (DebugFloatingPointError) {
+    if (DebugPrecision) {
       llvm::errs() << "SYMBOLIC ERROR:\n";
       state.symbolicError->dump();
     }

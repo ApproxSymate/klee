@@ -55,9 +55,9 @@ extern llvm::cl::opt<CoreSolverType> CoreSolverToUse;
 
 extern llvm::cl::opt<CoreSolverType> DebugCrossCheckCoreSolverWith;
 
-extern llvm::cl::opt<bool> FloatingPointError;
+extern llvm::cl::opt<bool> PrecisionError;
 
-extern llvm::cl::opt<bool> DebugFloatingPointError;
+extern llvm::cl::opt<bool> DebugPrecision;
 
 #ifdef ENABLE_METASMT
 
