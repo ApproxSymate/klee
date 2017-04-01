@@ -2499,14 +2499,20 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     if (PrecisionError) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
+
+      if (left->getWidth() > right->getWidth())
+        right = ZExtExpr::create(right, left->getWidth());
+      else if (left->getWidth() < right->getWidth())
+        left = ZExtExpr::create(left, right->getWidth());
+
       ref<Expr> result = MulExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+      std::vector<ref<Expr> > arguments;
+      arguments.push_back(left);
+      arguments.push_back(right);
 
-    bindLocal(ki, state, result,
-              state.symbolicError->propagateError(this, i, result, arguments));
+      bindLocal(ki, state, result, state.symbolicError->propagateError(
+                                       this, i, result, arguments));
     } else {
     ref<ConstantExpr> left = toConstant(state, eval(ki, 0, state).value,
                                         "floating point");
@@ -2539,6 +2545,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     if (PrecisionError) {
       ref<Expr> left = eval(ki, 0, state).value;
       ref<Expr> right = eval(ki, 1, state).value;
+
+      if (left->getWidth() > right->getWidth())
+        right = ZExtExpr::create(right, left->getWidth());
+      else if (left->getWidth() < right->getWidth())
+        left = ZExtExpr::create(left, right->getWidth());
+
       ref<Expr> result = SDivExpr::create(left, right);
 
       std::vector<ref<Expr> > arguments;

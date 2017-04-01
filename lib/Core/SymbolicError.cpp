@@ -127,6 +127,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
                                         ref<Expr> result,
                                         std::vector<ref<Expr> > &arguments) {
   switch (instr->getOpcode()) {
+  case llvm::Instruction::FAdd:
   case llvm::Instruction::Add: {
     llvm::Value *lOp = instr->getOperand(0);
     llvm::Value *rOp = instr->getOperand(1);
@@ -152,6 +153,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
     valueErrorMap[instr] = result;
     return result;
     }
+    case llvm::Instruction::FSub:
     case llvm::Instruction::Sub: {
       llvm::Value *lOp = instr->getOperand(0);
       llvm::Value *rOp = instr->getOperand(1);
@@ -168,8 +170,8 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
         extendedRight = ZExtExpr::create(rError, arguments[1]->getWidth());
       }
 
-      ref<Expr> errorLeft = MulExpr::create(extendedLeft.get(), arguments[0]);
-      ref<Expr> errorRight = MulExpr::create(extendedRight.get(), arguments[1]);
+      ref<Expr> errorLeft = MulExpr::create(extendedLeft, arguments[0]);
+      ref<Expr> errorRight = MulExpr::create(extendedRight, arguments[1]);
       ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
 
       result = ExtractExpr::create(
@@ -178,6 +180,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       valueErrorMap[instr] = result;
       return result;
     }
+    case llvm::Instruction::FMul:
     case llvm::Instruction::Mul: {
       llvm::Value *lOp = instr->getOperand(0);
       llvm::Value *rOp = instr->getOperand(1);
@@ -199,6 +202,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       valueErrorMap[instr] = result;
       return result;
     }
+    case llvm::Instruction::FDiv:
     case llvm::Instruction::UDiv: {
       llvm::Value *lOp = instr->getOperand(0);
       llvm::Value *rOp = instr->getOperand(1);
@@ -241,23 +245,62 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       valueErrorMap[instr] = result;
       return result;
     }
-    default: {
-      // By default, simply find error in one of the arguments
+    case llvm::Instruction::FCmp:
+    case llvm::Instruction::ICmp: {
+      // We assume that decision is precisely made
       ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
-      for (unsigned i = 0, s = arguments.size(); i < s; ++i) {
-        llvm::Value *v = instr->getOperand(i);
-        std::map<llvm::Value *, ref<Expr> >::iterator it =
-            valueErrorMap.find(v);
-        if (it != valueErrorMap.end()) {
-          error = valueErrorMap[v];
-          break;
-        }
+      valueErrorMap[instr] = error;
+      return error;
+    }
+    case llvm::Instruction::FRem:
+    case llvm::Instruction::SRem:
+    case llvm::Instruction::URem:
+    case llvm::Instruction::And:
+    case llvm::Instruction::Or:
+    case llvm::Instruction::Xor: {
+      // Result in summing up of the errors of its arguments
+      std::map<llvm::Value *, ref<Expr> >::iterator opIt0 = valueErrorMap.find(
+                                                        instr->getOperand(0)),
+                                                    opIt1 = valueErrorMap.find(
+                                                        instr->getOperand(1));
+      ref<Expr> noError = ConstantExpr::create(0, Expr::Int8);
+      ref<Expr> error0 =
+          (opIt0 == valueErrorMap.end() ? noError : opIt0->second);
+      ref<Expr> error1 =
+          (opIt1 == valueErrorMap.end() ? noError : opIt1->second);
+      return ExtractExpr::create(AddExpr::create(error0, error1), 0,
+                                 Expr::Int8);
+    }
+    case llvm::Instruction::AShr:
+    case llvm::Instruction::FPExt:
+    case llvm::Instruction::FPTrunc:
+    case llvm::Instruction::GetElementPtr:
+    case llvm::Instruction::LShr:
+    case llvm::Instruction::Shl:
+    case llvm::Instruction::SExt:
+    case llvm::Instruction::Trunc:
+    case llvm::Instruction::ZExt:
+    case llvm::Instruction::FPToSI:
+    case llvm::Instruction::FPToUI:
+    case llvm::Instruction::SIToFP:
+    case llvm::Instruction::UIToFP:
+    case llvm::Instruction::IntToPtr:
+    case llvm::Instruction::PtrToInt:
+    case llvm::Instruction::BitCast: {
+      // Simply propagate error of the first argument
+      ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+      llvm::Value *v = instr->getOperand(0);
+      std::map<llvm::Value *, ref<Expr> >::iterator it = valueErrorMap.find(v);
+      if (it != valueErrorMap.end()) {
+        error = valueErrorMap[v];
+        break;
       }
       if (error->getWidth() > Expr::Int8)
         error = ExtractExpr::create(error, 0, Expr::Int8);
       valueErrorMap[instr] = error;
       return error;
     }
+    default: { assert(!"unhandled instruction"); }
   }
   return ConstantExpr::create(0, Expr::Int8);
 }
