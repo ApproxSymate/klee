@@ -293,7 +293,6 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
       std::map<llvm::Value *, ref<Expr> >::iterator it = valueErrorMap.find(v);
       if (it != valueErrorMap.end()) {
         error = valueErrorMap[v];
-        break;
       }
       if (error->getWidth() > Expr::Int8)
         error = ExtractExpr::create(error, 0, Expr::Int8);
