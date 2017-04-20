@@ -40,7 +40,11 @@ class SymbolicError {
 public:
   SymbolicError() {}
 
-  SymbolicError(SymbolicError &symErr) { storedError = symErr.storedError; }
+  SymbolicError(SymbolicError &symErr) {
+    storedError = symErr.storedError;
+    // FIXME: Simple copy for now.
+    valueErrorMap = symErr.valueErrorMap;
+  }
 
   ~SymbolicError();
 
@@ -49,6 +53,8 @@ public:
   ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
                            ref<Expr> result,
                            std::vector<ref<Expr> > &arguments);
+
+  ref<Expr> retrieveError(llvm::Value *value) { return valueErrorMap[value]; }
 
   std::string getOutputString() { return outputString; }
 

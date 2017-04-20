@@ -1954,9 +1954,15 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     Cell c1 = eval(ki, 1, state);
     ref<Expr> tExpr = c1.value;
     ref<Expr> terror = c1.error;
+    if (terror.isNull())
+      terror = state.symbolicError->retrieveError(ki->inst->getOperand(1));
+
     Cell c2 = eval(ki, 2, state);
     ref<Expr> fExpr = c2.value;
     ref<Expr> ferror = c2.error;
+    if (ferror.isNull())
+      ferror = state.symbolicError->retrieveError(ki->inst->getOperand(1));
+
     ref<Expr> result = SelectExpr::create(cond, tExpr, fExpr);
     ref<Expr> error = SelectExpr::create(cond, terror, ferror);
     bindLocal(ki, state, result, error);
