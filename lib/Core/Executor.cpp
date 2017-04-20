@@ -1940,7 +1940,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 #endif
     ref<Expr> result = c.value;
     ref<Expr> error = c.error;
-    bindLocal(ki, state, result, error);
+    // We use the arguments list as a carrier for the error amount
+    std::vector<ref<Expr> > errors;
+    errors.push_back(error);
+    bindLocal(ki, state, result,
+              state.symbolicError->propagateError(this, i, result, errors));
     break;
   }
 
