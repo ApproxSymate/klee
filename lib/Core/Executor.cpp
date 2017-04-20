@@ -1135,6 +1135,14 @@ void Executor::bindArgument(KFunction *kf, unsigned index,
   getArgumentCell(state, kf, index).value = value;
 }
 
+void Executor::bindArgument(KFunction *kf, unsigned index,
+                            ExecutionState &state, ref<Expr> value,
+                            ref<Expr> error) {
+  Cell &c = getArgumentCell(state, kf, index);
+  c.value = value;
+  c.error = error;
+}
+
 ref<Expr> Executor::toUnique(const ExecutionState &state, 
                              ref<Expr> &e) {
   ref<Expr> result = e;
@@ -1466,7 +1474,7 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
 
     unsigned numFormals = f->arg_size();
     for (unsigned i = 0; i < numFormals; ++i)
-      bindArgument(kf, i, state, arguments[i].value);
+      bindArgument(kf, i, state, arguments[i].value, arguments[i].error);
   }
 }
 

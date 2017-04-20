@@ -351,6 +351,8 @@ private:
                     unsigned index,
                     ExecutionState &state,
                     ref<Expr> value);
+  void bindArgument(KFunction *kf, unsigned index, ExecutionState &state,
+                    ref<Expr> value, ref<Expr> error);
 
   ref<klee::ConstantExpr> evalConstantExpr(const llvm::ConstantExpr *ce);
 
