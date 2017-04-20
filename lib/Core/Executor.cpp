@@ -1874,6 +1874,14 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
         }
       }
 
+      if (PrecisionError) {
+        ref<Expr> dummyResult = ConstantExpr::create(0, Expr::Int8);
+        std::vector<ref<Expr> > errors;
+        for (unsigned j = 0; j < arguments.size(); ++j) {
+          errors.push_back(arguments[j].error);
+        }
+        state.symbolicError->propagateError(this, i, dummyResult, errors);
+      }
       executeCall(state, ki, f, arguments);
     } else {
       ref<Expr> v = eval(ki, 0, state).value;
@@ -1901,6 +1909,14 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
                                 "resolved symbolic function pointer to: %s",
                                 f->getName().data());
 
+            if (PrecisionError) {
+              ref<Expr> dummyResult = ConstantExpr::create(0, Expr::Int8);
+              std::vector<ref<Expr> > errors;
+              for (unsigned j = 0; j < arguments.size(); ++j) {
+                errors.push_back(arguments[j].error);
+              }
+              state.symbolicError->propagateError(this, i, dummyResult, errors);
+            }
             executeCall(*res.first, ki, f, arguments);
           } else {
             if (!hasInvalid) {

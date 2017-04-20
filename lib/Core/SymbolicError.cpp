@@ -127,6 +127,24 @@ ref<Expr> SymbolicError::propagateError(Executor *executor,
                                         ref<Expr> result,
                                         std::vector<ref<Expr> > &arguments) {
   switch (instr->getOpcode()) {
+  case llvm::Instruction::Call:
+  case llvm::Instruction::Invoke: {
+    ref<Expr> dummyError = ConstantExpr::create(0, Expr::Int8);
+    if (llvm::CallInst *ci = llvm::dyn_cast<llvm::CallInst>(instr)) {
+      if (llvm::Function *callee = ci->getCalledFunction()) {
+        llvm::Function::ArgumentListType &argList = callee->getArgumentList();
+        unsigned i = 0;
+        for (llvm::Function::ArgumentListType::iterator it1 = argList.begin(),
+                                                        ie1 = argList.end();
+             it1 != ie1; ++it1) {
+          llvm::Value *formalOp = &(*it1);
+          valueErrorMap[formalOp] = arguments.at(i);
+          ++i;
+        }
+      }
+    }
+    return dummyError;
+  }
   case llvm::Instruction::FAdd:
   case llvm::Instruction::Add: {
     llvm::Value *lOp = instr->getOperand(0);
