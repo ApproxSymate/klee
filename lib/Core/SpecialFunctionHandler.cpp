@@ -108,6 +108,7 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
   add("klee_prefer_cex", handlePreferCex, false),
   add("klee_posix_prefer_cex", handlePosixPreferCex, false),
   add("klee_print_expr", handlePrintExpr, false),
+  add("klee_print_error_expr", handlePrintErrorExpr, false),
   add("klee_print_range", handlePrintRange, false),
   add("klee_set_forking", handleSetForking, false),
   add("klee_stack_trace", handleStackTrace, false),
@@ -461,8 +462,8 @@ SpecialFunctionHandler::handleTrackError(ExecutionState &state,
     name = "unnamed_error";
   } else {
     // FIXME: Should be a user.err, not an assert.
-    assert(arguments.size() == 2 &&
-           "invalid number of arguments to klee_track_error");
+    /*assert(arguments.size() == 2 &&
+           "invalid number of arguments to klee_track_error");*/
     name = readStringAtAddress(state, arguments[1]);
   }
 
@@ -507,11 +508,21 @@ void SpecialFunctionHandler::handlePosixPreferCex(ExecutionState &state,
 void SpecialFunctionHandler::handlePrintExpr(ExecutionState &state,
                                   KInstruction *target,
                                   std::vector<ref<Expr> > &arguments) {
-  assert(arguments.size()==2 &&
-         "invalid number of arguments to klee_print_expr");
+  /*assert(arguments.size()==2 &&
+         "invalid number of arguments to klee_print_expr");*/
 
   std::string msg_str = readStringAtAddress(state, arguments[0]);
   llvm::errs() << msg_str << ":" << arguments[1] << "\n";
+}
+
+void SpecialFunctionHandler::handlePrintErrorExpr(ExecutionState &state,
+                                  KInstruction *target,
+                                  std::vector<ref<Expr> > &arguments) {
+  /*assert(arguments.size()==2 &&
+         "invalid number of arguments to klee_print_expr");*/
+
+  std::string msg_str = readStringAtAddress(state, arguments[0]);
+  llvm::errs() << msg_str << ":" << arguments[3] << "\n";
 }
 
 void SpecialFunctionHandler::handleSetForking(ExecutionState &state,
@@ -746,8 +757,8 @@ void SpecialFunctionHandler::handleMakeSymbolic(ExecutionState &state,
     name = "unnamed";
   } else {
     // FIXME: Should be a user.err, not an assert.
-    assert(arguments.size()==3 &&
-           "invalid number of arguments to klee_make_symbolic");  
+   /* assert(arguments.size()==3 &&
+           "invalid number of arguments to klee_make_symbolic"); */
     name = readStringAtAddress(state, arguments[2]);
   }
 

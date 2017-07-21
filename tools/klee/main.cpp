@@ -774,6 +774,7 @@ static const char *modelledExternals[] = {
   "klee_prefer_cex",
   "klee_posix_prefer_cex",
   "klee_print_expr",
+  "klee_print_error_expr",
   "klee_print_range",
   "klee_report_error",
   "klee_set_forking",

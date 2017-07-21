@@ -1303,6 +1303,12 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
            it != ie; ++it) {
         exprArguments.push_back(it->value);
       }
+
+      for (std::vector<Cell>::iterator it = arguments.begin(),
+                                             ie = arguments.end();
+                 it != ie; ++it) {
+              exprArguments.push_back(it->error);
+      }
       // state may be destroyed by this call, cannot touch
       callExternalFunction(state, ki, f, exprArguments);
       break;
