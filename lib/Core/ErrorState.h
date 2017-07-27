@@ -77,7 +77,10 @@ public:
   void print(llvm::raw_ostream &os) const;
 
   /// dump - Print the object content to stderr
-  void dump() const { print(llvm::errs()); }
+  void dump() const {
+    print(llvm::errs());
+    llvm::errs() << "\n";
+  }
 };
 }
 
