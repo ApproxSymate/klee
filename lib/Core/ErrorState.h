@@ -44,10 +44,9 @@ private:
 public:
   ErrorState() : refCount(0) {}
 
-  ErrorState(ErrorState &symErr) : refCount(0) {
-    storedError = symErr.storedError;
-    // FIXME: Simple copy for now.
-    inputErrorList = symErr.inputErrorList;
+  ErrorState(ErrorState &errorState) : refCount(0) {
+    storedError = errorState.storedError;
+    inputErrorList = errorState.inputErrorList;
   }
 
   ~ErrorState();
