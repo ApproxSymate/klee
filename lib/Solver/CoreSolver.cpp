@@ -97,4 +97,13 @@ Solver *createCoreSolver(CoreSolverType cst) {
     llvm_unreachable("Unsupported CoreSolverType");
   }
 }
+
+Solver *createCoreErrorSolver() {
+#ifdef ENABLE_Z3
+  klee_message("Using Z3 for reasoning about error expressions");
+  return new Z3ErrorSolver();
+#else
+  return NULL
+#endif
+}
 }
