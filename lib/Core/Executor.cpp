@@ -4346,6 +4346,7 @@ void Executor::executeStoreError(ExecutionState &state, const uintptr_t address,
       UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
   ref<Expr> addressExpr = Expr::createPointer(address);
 
+  state.symbolicError->registerInputError(errorExpr);
   state.symbolicError->storeError(state.pc->inst, addressExpr, errorExpr);
 }
 

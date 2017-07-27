@@ -118,6 +118,10 @@ public:
   void executeStore(llvm::Instruction *inst, ref<Expr> address, ref<Expr> value,
                     ref<Expr> error);
 
+  void registerInputError(ref<Expr> error) {
+    errorState->registerInputError(error);
+  }
+
   void storeError(llvm::Instruction *inst, ref<Expr> address, ref<Expr> error) {
     errorState->executeStoreSimple(inst, address, error);
   }

@@ -39,11 +39,15 @@ private:
 
   std::map<uintptr_t, ref<Expr> > storedError;
 
+  std::vector<ref<Expr> > inputErrorList;
+
 public:
   ErrorState() : refCount(0) {}
 
   ErrorState(ErrorState &symErr) : refCount(0) {
     storedError = symErr.storedError;
+    // FIXME: Simple copy for now.
+    inputErrorList = symErr.inputErrorList;
   }
 
   ~ErrorState();
@@ -54,6 +58,8 @@ public:
                            ref<Expr> result, std::vector<Cell> &arguments);
 
   std::string &getOutputString() { return outputString; }
+
+  void registerInputError(ref<Expr> error) { inputErrorList.push_back(error); }
 
   void executeStoreSimple(llvm::Instruction *inst, ref<Expr> address,
                           ref<Expr> error);

@@ -409,4 +409,16 @@ void ErrorState::print(llvm::raw_ostream &os) const {
     os << "(empty)";
   else
     os << outputString;
+
+  os << "\nInput Errors: ";
+  if (inputErrorList.empty())
+    os << "(empty)";
+  else {
+    for (std::vector<ref<Expr> >::const_iterator it = inputErrorList.begin(),
+                                                 ie = inputErrorList.end();
+         it != ie; ++it) {
+      os << "\n";
+      (*it)->print(os);
+    }
+  }
 }
