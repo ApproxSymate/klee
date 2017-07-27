@@ -371,6 +371,7 @@ Executor::Executor(LLVMContext &ctx, const InterpreterOptions &opts,
       interpreterHandler->getOutputFilename(SOLVER_QUERIES_KQUERY_FILE_NAME));
 
   this->solver = new TimingSolver(solver, EqualitySubstitution);
+  this->errorSolver = createCoreErrorSolver();
   memory = new MemoryManager(&arrayCache);
 
   if (optionIsSet(DebugPrintInstructions, FILE_ALL) ||
@@ -443,6 +444,7 @@ Executor::~Executor() {
   if (statsTracker)
     delete statsTracker;
   delete solver;
+  delete errorSolver;
   delete kmodule;
   while(!timers.empty()) {
     delete timers.back();
