@@ -87,8 +87,42 @@ ref<Expr> ErrorState::getError(Executor *executor, ref<Expr> valueExpr,
 
 ErrorState::~ErrorState() {}
 
-void ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
-                                  double bound) {
+ConstraintManager
+ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
+                             double bound,
+                             std::vector<ref<Expr> > &_inputErrorList) {
+  ConstraintManager ret;
+
+  std::string errorVar;
+  llvm::raw_string_ostream errorVarStream(errorVar);
+  errorVarStream << "__error__" << reinterpret_cast<uint64_t>(error.get());
+  errorVarStream.flush();
+
+  ref<Expr> errorVarExpr = ReadExpr::create(
+      UpdateList(errorArrayCache.CreateArray(errorVar, Expr::Int8), 0),
+      ConstantExpr::createPointer(0));
+
+  ret.addConstraint(EqExpr::create(errorVarExpr, error));
+
+  // We assume a simple rational bound, not more than 4 fractional digits
+  unsigned divisor = 10000;
+  int dividend = (int)floor(bound * divisor);
+  dividend = (dividend < 0) ? -dividend : dividend;
+
+  ref<Expr> lowerBound = ExtractExpr::create(
+      SDivExpr::create(
+          SubExpr::alloc(ConstantExpr::create(0, Expr::Int64),
+                         ConstantExpr::create(dividend, Expr::Int64)),
+          ConstantExpr::create(divisor, Expr::Int64)),
+      0, Expr::Int8);
+  ref<Expr> upperBound = ExtractExpr::create(
+      SDivExpr::alloc(ConstantExpr::create(dividend, Expr::Int64),
+                      ConstantExpr::create(divisor, Expr::Int64)),
+      0, Expr::Int8);
+
+  ret.addConstraint(SgeExpr::create(errorVarExpr, lowerBound));
+  ret.addConstraint(SleExpr::create(errorVarExpr, upperBound));
+
   llvm::raw_string_ostream stream(outputString);
   if (!outputString.empty()) {
     stream << "\n------------------------\n";
@@ -115,6 +149,9 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
   stream << PrettyExpressionBuilder::construct(error);
   stream << "\nAbsolute Bound: " << bound << "\n";
   stream.flush();
+
+  _inputErrorList = inputErrorList;
+  return ret;
 }
 
 ref<Expr> ErrorState::propagateError(Executor *executor,

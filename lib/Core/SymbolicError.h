@@ -97,8 +97,10 @@ public:
   void deregisterLoopIfExited(Executor *executor, ExecutionState &state,
                               llvm::Instruction *inst);
 
-  void outputErrorBound(llvm::Instruction *inst, double bound) {
-    errorState->outputErrorBound(inst, kleeBoundErrorExpr, bound);
+  ConstraintManager outputErrorBound(llvm::Instruction *inst, double bound,
+                                     std::vector<ref<Expr> > &inputErrorList) {
+    return errorState->outputErrorBound(inst, kleeBoundErrorExpr, bound,
+                                        inputErrorList);
   }
 
   ref<Expr> propagateError(Executor *executor, KInstruction *ki,

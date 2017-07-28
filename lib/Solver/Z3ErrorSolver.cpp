@@ -244,30 +244,52 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
       const Array *array = *it;
       std::vector<unsigned char> data;
 
-      data.reserve(array->size);
-      for (unsigned offset = 0; offset < array->size; offset++) {
-        // We can't use Z3ASTHandle here so have to do ref counting manually
-        ::Z3_ast arrayElementExpr;
-        Z3ErrorASTHandle initial_read = builder->getInitialRead(array, offset);
+      data.reserve(8);
+      unsigned offset = 0;
 
-        bool successfulEval =
-            Z3_model_eval(builder->ctx, theModel, initial_read,
-                          /*model_completion=*/Z3_TRUE, &arrayElementExpr);
-        assert(successfulEval && "Failed to evaluate model");
-        Z3_inc_ref(builder->ctx, arrayElementExpr);
-        assert(Z3_get_ast_kind(builder->ctx, arrayElementExpr) ==
-                   Z3_NUMERAL_AST &&
-               "Evaluated expression has wrong sort");
+      // We can't use Z3ASTHandle here so have to do ref counting manually
+      ::Z3_ast arrayElementExpr;
+      Z3ErrorASTHandle initial_read = builder->getInitialRead(array, offset);
 
-        int arrayElementValue = 0;
-        bool successGet = Z3_get_numeral_int(builder->ctx, arrayElementExpr,
-                                             &arrayElementValue);
-        assert(successGet && "failed to get value back");
+      bool successfulEval =
+          Z3_model_eval(builder->ctx, theModel, initial_read,
+                        /*model_completion=*/Z3_TRUE, &arrayElementExpr);
+      assert(successfulEval && "Failed to evaluate model");
+      Z3_inc_ref(builder->ctx, arrayElementExpr);
+      assert(Z3_get_ast_kind(builder->ctx, arrayElementExpr) ==
+                 Z3_NUMERAL_AST &&
+             "Evaluated expression has wrong sort");
+
+      int arrayElementValue = 0;
+      bool successGet = Z3_get_numeral_int(builder->ctx, arrayElementExpr,
+                                           &arrayElementValue);
+      if (successGet) {
         assert(arrayElementValue >= 0 && arrayElementValue <= 255 &&
                "Integer from model is out of range");
         data.push_back(arrayElementValue);
-        Z3_dec_ref(builder->ctx, arrayElementExpr);
+      } else {
+        int numerator, denominator;
+        bool successNumerator = Z3_get_numeral_int(
+            builder->ctx, Z3_get_numerator(builder->ctx, arrayElementExpr),
+            &numerator);
+        bool successDenominator = Z3_get_numeral_int(
+            builder->ctx, Z3_get_denominator(builder->ctx, arrayElementExpr),
+            &denominator);
+
+        assert(successNumerator && successDenominator &&
+               "failed to get value back");
+        double result = ((double)numerator) / ((double)denominator);
+
+        uint64_t intResult = 0;
+        memcpy(&intResult, &result, 8);
+
+        for (int i = 0; i < 8; ++i) {
+          data.push_back(intResult & 255);
+          intResult = intResult >> 8;
+        }
       }
+      Z3_dec_ref(builder->ctx, arrayElementExpr);
+
       values->push_back(data);
     }
 

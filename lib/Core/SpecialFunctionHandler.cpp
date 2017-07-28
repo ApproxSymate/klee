@@ -12,11 +12,12 @@
 #include "TimingSolver.h"
 
 #include "klee/ExecutionState.h"
-
+#include "klee/SolverImpl.h"
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/KModule.h"
 #include "klee/Internal/Support/Debug.h"
 #include "klee/Internal/Support/ErrorHandling.h"
+#include "klee/util/ExprUtil.h"
 
 #include "Executor.h"
 #include "MemoryManager.h"
@@ -442,7 +443,38 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
     double *boundPtr = reinterpret_cast<double *>(&intValue);
     double bound = *boundPtr;
 
-    state.symbolicError->outputErrorBound(target->inst, bound);
+    std::vector<ref<Expr> > inputErrorList;
+    ConstraintManager cm = state.symbolicError->outputErrorBound(
+        target->inst, bound, inputErrorList);
+
+    for (std::vector<ref<Expr> >::const_iterator it = inputErrorList.begin(),
+                                                 ie = inputErrorList.end();
+         it != ie; ++it) {
+      std::vector<const Array *> objects;
+      std::vector<std::vector<unsigned char> > values;
+      bool hasSolution;
+      Query query(cm, *it);
+
+      findSymbolicObjects(query.expr, objects);
+      bool success = executor.errorSolver->impl->computeInitialValues(
+          query.withFalse(), objects, values, hasSolution);
+
+      assert(success && hasSolution && "state has invalid constraint set");
+
+      uint64_t intResult = 0;
+
+      std::vector<unsigned char> &value = values.back();
+      for (std::vector<unsigned char>::const_reverse_iterator
+               it1 = value.rbegin(),
+               ie1 = value.rend();
+           it1 != ie1; ++it1) {
+        intResult = intResult << 8;
+        intResult = intResult | (*it1);
+      }
+
+      double result;
+      memcpy(&result, &intResult, 8);
+    }
     return;
   }
 

@@ -10,6 +10,7 @@
 #ifndef KLEE_ERRORSTATE_H_
 #define KLEE_ERRORSTATE_H_
 
+#include "klee/Constraints.h"
 #include "klee/Expr.h"
 #include "klee/util/ArrayCache.h"
 #include "klee/Internal/Module/Cell.h"
@@ -51,7 +52,9 @@ public:
 
   ~ErrorState();
 
-  void outputErrorBound(llvm::Instruction *inst, ref<Expr> error, double bound);
+  ConstraintManager outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
+                                     double bound,
+                                     std::vector<ref<Expr> > &_inputErrorList);
 
   ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
                            ref<Expr> result, std::vector<Cell> &arguments);
