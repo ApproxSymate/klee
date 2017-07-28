@@ -296,6 +296,12 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
     Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
   }
 
+  if (DebugPrecision) {
+    llvm::errs() << "Solving:\n";
+    llvm::errs() << Z3_optimize_to_string(builder->ctx, theSolver);
+    llvm::errs() << "\n";
+  }
+
   ::Z3_lbool satisfiable = Z3_optimize_check(builder->ctx, theSolver);
   runStatusCode = handleOptimizeResponse(
       theSolver, satisfiable, objects, infinity, values, epsilon, hasSolution);
@@ -446,6 +452,14 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
           Z3_ast_vector_get(builder->ctx, upperBoundVector, 1);
       ::Z3_ast epsilonCoefficient =
           Z3_ast_vector_get(builder->ctx, upperBoundVector, 2);
+
+      if (DebugPrecision) {
+        llvm::errs() << Z3_ast_to_string(builder->ctx, infinityCoefficient)
+                     << "\n";
+        llvm::errs() << Z3_ast_to_string(builder->ctx, upperBound) << "\n";
+        llvm::errs() << Z3_ast_to_string(builder->ctx, epsilonCoefficient)
+                     << "\n";
+      }
 
       int upperBoundValue = 0;
       double result;

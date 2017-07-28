@@ -467,6 +467,14 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
 
       assert(success && hasSolution && "state has invalid constraint set");
 
+      if (DebugPrecision) {
+        for (unsigned i = 0; i < inputErrorList.size(); ++i) {
+          llvm::errs() << "Error Bound for ";
+          inputErrorList.at(i)->print(llvm::errs());
+          llvm::errs() << " is " << values.at(i) << "\n";
+        }
+      }
+
       // Output the computed error bounds
       state.symbolicError->outputComputedErrorBound(values);
     }
