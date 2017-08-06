@@ -1473,6 +1473,16 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
     unsigned numFormals = f->arg_size();
     for (unsigned i = 0; i < numFormals; ++i)
       bindArgument(kf, i, state, arguments[i].value, arguments[i].error);
+
+    {
+      // We update the symbolic error state
+      ref<Expr> dummyResult;
+      std::vector<ref<Expr> > errorArguments;
+      for (unsigned i = 0; i < numFormals; ++i)
+        errorArguments.push_back(arguments[i].error);
+      state.symbolicError->propagateError(this, ki, dummyResult,
+                                          errorArguments);
+    }
   }
 }
 
@@ -1582,6 +1592,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       terminateStateOnExit(state);
     } else {
       state.popFrame();
+
+      {
+        // We update the symbolic error state
+        std::vector<ref<Expr> > tmpArgs;
+        tmpArgs.push_back(error);
+        state.symbolicError->propagateError(this, ki, result, tmpArgs);
+      }
 
       if (statsTracker)
         statsTracker->framePopped(state);
@@ -1906,7 +1923,6 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
               klee_warning_once((void*) (unsigned long) addr, 
                                 "resolved symbolic function pointer to: %s",
                                 f->getName().data());
-
             executeCall(*res.first, ki, f, arguments);
           } else {
             if (!hasInvalid) {
