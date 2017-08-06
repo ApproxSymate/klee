@@ -30,12 +30,55 @@
 
 using namespace klee;
 
+ErrorState::CallFrame::CallFrame(llvm::Instruction *inst,
+                                 std::vector<ref<Expr> > &_errors)
+    : refCount(0), call(inst) {
+  llvm::Function *callee = 0;
+  if (llvm::CallInst *_call = llvm::dyn_cast<llvm::CallInst>(inst)) {
+    callee = _call->getCalledFunction();
+  } else if (llvm::InvokeInst *_call = llvm::dyn_cast<llvm::InvokeInst>(inst)) {
+    callee = _call->getCalledFunction();
+  }
+
+  assert(callee && "wrong instruction");
+
+  llvm::Function::ArgumentListType &argList = callee->getArgumentList();
+  unsigned i = 0;
+  for (llvm::Function::ArgumentListType::iterator it1 = argList.begin(),
+                                                  ie1 = argList.end();
+       it1 != ie1; ++it1) {
+    llvm::Value *formalOp = &(*it1);
+    argumentErrors[formalOp] = _errors.at(i);
+    ++i;
+  }
+}
+
+ref<Expr> ErrorState::CallFrame::getError(llvm::Value *v) const {
+  ref<Expr> ret;
+  std::map<llvm::Value *, ref<Expr> >::const_iterator it =
+      argumentErrors.find(v);
+  if (it != argumentErrors.end()) {
+    ret = it->second;
+  }
+  return ret;
+}
+
+/**/
+
 ref<Expr> ErrorState::getError(Executor *executor, ref<Expr> valueExpr,
                                llvm::Value *value) {
   ref<Expr> ret = ConstantExpr::create(0, Expr::Int8);
 
   if (value) {
     ref<Expr> errorAmount = valueErrorMap[value];
+
+    // It is necessary that we check first if the given value was an argument
+    if (llvm::isa<llvm::Argument>(value)) {
+      errorAmount = callStack.back()->getError(value);
+
+      // We update the value error map to the correct argument value
+      valueErrorMap[value] = errorAmount;
+    }
 
     if (!errorAmount.isNull())
       return errorAmount;
@@ -151,20 +194,10 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
   }
   case llvm::Instruction::Call:
   case llvm::Instruction::Invoke: {
+    // Note that in handling of call or invoke, we assume that the arguments are
+    // the errors.
     ref<Expr> dummyError = ConstantExpr::create(0, Expr::Int8);
-    if (llvm::CallInst *ci = llvm::dyn_cast<llvm::CallInst>(instr)) {
-      if (llvm::Function *callee = ci->getCalledFunction()) {
-        llvm::Function::ArgumentListType &argList = callee->getArgumentList();
-        unsigned i = 0;
-        for (llvm::Function::ArgumentListType::iterator it1 = argList.begin(),
-                                                        ie1 = argList.end();
-             it1 != ie1; ++it1) {
-          llvm::Value *formalOp = &(*it1);
-          valueErrorMap[formalOp] = arguments.at(i);
-          ++i;
-        }
-      }
-    }
+    callStack.push_back(ref<CallFrame>(new CallFrame(instr, arguments)));
     return dummyError;
   }
   case llvm::Instruction::FAdd:
@@ -334,6 +367,18 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     if (error->getWidth() > Expr::Int8)
       error = ExtractExpr::create(error, 0, Expr::Int8);
     valueErrorMap[instr] = error;
+    return error;
+  }
+  case llvm::Instruction::Ret: {
+    // Note that we assume that the error expression is the first argument here;
+    // we simply return that.
+    ref<Expr> error = arguments.at(0);
+
+    valueErrorMap[callStack.back()->getInstruction()] = error;
+
+    // We pop the stack;
+    callStack.pop_back();
+
     return error;
   }
   default: { assert(!"unhandled instruction"); }

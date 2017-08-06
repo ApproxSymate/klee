@@ -26,6 +26,25 @@ class ErrorState {
 public:
   unsigned refCount;
 
+  class CallFrame {
+  public:
+    unsigned refCount;
+
+  private:
+    llvm::Instruction *call;
+
+    std::map<llvm::Value *, ref<Expr> > argumentErrors;
+
+  public:
+    CallFrame(llvm::Instruction *inst, std::vector<ref<Expr> > &_errors);
+
+    ~CallFrame() {}
+
+    ref<Expr> getError(llvm::Value *v) const;
+
+    llvm::Instruction *getInstruction() const { return call; }
+  };
+
 private:
   std::map<llvm::Value *, ref<Expr> > valueErrorMap;
 
@@ -39,6 +58,9 @@ private:
   std::string outputString;
 
   std::map<uintptr_t, ref<Expr> > storedError;
+
+  /// \brief This is where we store the call error values of call arguments
+  std::vector<ref<CallFrame> > callStack;
 
 public:
   ErrorState() : refCount(0) {}
