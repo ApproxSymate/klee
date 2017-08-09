@@ -12,6 +12,7 @@
 
 #include "klee/Expr.h"
 #include "klee/util/ArrayCache.h"
+#include "klee/Internal/Module/Cell.h"
 
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Instructions.h"
@@ -54,8 +55,7 @@ public:
   void outputErrorBound(llvm::Instruction *inst, double bound);
 
   ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
-                           ref<Expr> result,
-                           std::vector<ref<Expr> > &arguments);
+                           ref<Expr> result, std::vector<Cell> &arguments);
 
   ref<Expr> retrieveError(llvm::Value *value) { return valueErrorMap[value]; }
 

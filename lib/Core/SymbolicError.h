@@ -98,7 +98,7 @@ public:
   }
 
   ref<Expr> propagateError(Executor *executor, KInstruction *ki,
-                           ref<Expr> result, std::vector<ref<Expr> > &arguments,
+                           ref<Expr> result, std::vector<Cell> &arguments,
                            unsigned int phiResultWidth = 0);
 
   ref<Expr> retrieveError(llvm::Value *value) {
