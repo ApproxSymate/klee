@@ -1931,10 +1931,10 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> result = c.value;
     ref<Expr> error = c.error;
     // We use the arguments list as a carrier for the error amount
-    std::vector<ref<Expr> > errors;
-    errors.push_back(error);
+    std::vector<Cell> errorsList;
+    errorsList.push_back(c);
     bindLocal(ki, state, result,
-              state.symbolicError->propagateError(this, ki, result, errors,
+              state.symbolicError->propagateError(this, ki, result, errorsList,
                                                   result->getWidth()));
     break;
   }
@@ -1961,13 +1961,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     // Arithmetic / logical
 
   case Instruction::Add: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = AddExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
 
@@ -1975,13 +1978,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::Sub: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = SubExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -1989,13 +1995,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
  
   case Instruction::Mul: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = MulExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2003,13 +2012,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::UDiv: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = UDivExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2017,13 +2029,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::SDiv: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = SDivExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2031,13 +2046,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::URem: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = URemExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2045,13 +2063,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
  
   case Instruction::SRem: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = SRemExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2059,13 +2080,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::And: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = AndExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2073,13 +2097,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::Or: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = OrExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2087,13 +2114,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::Xor: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = XorExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2101,13 +2131,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::Shl: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = ShlExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2115,12 +2148,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::LShr: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = LShrExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2128,13 +2165,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::AShr: {
-    ref<Expr> left = eval(ki, 0, state).value;
-    ref<Expr> right = eval(ki, 1, state).value;
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
+    ref<Expr> left = lCell.value;
+    ref<Expr> right = rCell.value;
     ref<Expr> result = AShrExpr::create(left, right);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2149,13 +2189,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
     switch(ii->getPredicate()) {
     case ICmpInst::ICMP_EQ: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = EqExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2163,13 +2206,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     }
 
     case ICmpInst::ICMP_NE: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = NeExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2177,13 +2223,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     }
 
     case ICmpInst::ICMP_UGT: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = UgtExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2191,13 +2240,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     }
 
     case ICmpInst::ICMP_UGE: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = UgeExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2205,13 +2257,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     }
 
     case ICmpInst::ICMP_ULT: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = UltExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2219,13 +2274,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     }
 
     case ICmpInst::ICMP_ULE: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = UleExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2233,13 +2291,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     }
 
     case ICmpInst::ICMP_SGT: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = SgtExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2247,13 +2308,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     }
 
     case ICmpInst::ICMP_SGE: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = SgeExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2261,13 +2325,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     }
 
     case ICmpInst::ICMP_SLT: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = SltExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2275,13 +2342,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     }
 
     case ICmpInst::ICMP_SLE: {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = SleExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2342,8 +2412,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       base = AddExpr::create(base,
                              Expr::createPointer(kgepi->offset));
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(oldBase);
+    std::vector<Cell> arguments;
+    Cell oldBaseCell;
+    oldBaseCell.value = oldBase;
+    oldBaseCell.error = ConstantExpr::create(0, Expr::Int8);
+    arguments.push_back(oldBaseCell);
 
     bindLocal(ki, state, base,
               state.symbolicError->propagateError(this, ki, base, arguments));
@@ -2356,8 +2429,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     Cell c = eval(ki, 0, state);
     ref<Expr> result =
         ExtractExpr::create(c.value, 0, getWidthForLLVMType(ci->getType()));
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(c.value);
+    std::vector<Cell> arguments;
+    arguments.push_back(c);
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
     break;
@@ -2367,8 +2440,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     Cell c = eval(ki, 0, state);
     ref<Expr> result =
         ZExtExpr::create(c.value, getWidthForLLVMType(ci->getType()));
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(c.value);
+    std::vector<Cell> arguments;
+    arguments.push_back(c);
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
     break;
@@ -2378,8 +2451,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     Cell c = eval(ki, 0, state);
     ref<Expr> result =
         SExtExpr::create(c.value, getWidthForLLVMType(ci->getType()));
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(c.value);
+    std::vector<Cell> arguments;
+    arguments.push_back(c);
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
     break;
@@ -2391,8 +2464,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     Cell c = eval(ki, 0, state);
     ref<Expr> arg = c.value;
     ref<Expr> result = ZExtExpr::create(arg, pType);
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(arg);
+    std::vector<Cell> arguments;
+    arguments.push_back(c);
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
     break;
@@ -2400,10 +2473,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   case Instruction::PtrToInt: {
     CastInst *ci = cast<CastInst>(i);
     Expr::Width iType = getWidthForLLVMType(ci->getType());
-    ref<Expr> arg = eval(ki, 0, state).value;
+    Cell c = eval(ki, 0, state);
+    ref<Expr> arg = c.value;
     ref<Expr> result = ZExtExpr::create(arg, iType);
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(arg);
+    std::vector<Cell> arguments;
+    arguments.push_back(c);
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
     break;
@@ -2412,8 +2486,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   case Instruction::BitCast: {
     Cell c = eval(ki, 0, state);
     ref<Expr> result = c.value;
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(result);
+    std::vector<Cell> arguments;
+    arguments.push_back(c);
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
     break;
@@ -2422,14 +2496,17 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     // Floating point instructions
 
   case Instruction::FAdd: {
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
     if (PrecisionError) {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = AddExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
     } else {
@@ -2454,9 +2531,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
       ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2465,14 +2542,17 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FSub: {
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
     if (PrecisionError) {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = SubExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2496,9 +2576,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 #endif
       ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2507,9 +2587,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FMul: {
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
     if (PrecisionError) {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
 
       if (left->getWidth() > right->getWidth())
         right = ZExtExpr::create(right, left->getWidth());
@@ -2518,9 +2601,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
       ref<Expr> result = MulExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2542,9 +2625,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 #endif
     ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(left);
-    arguments.push_back(right);
+    std::vector<Cell> arguments;
+    arguments.push_back(lCell);
+    arguments.push_back(rCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2553,9 +2636,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FDiv: {
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
     if (PrecisionError) {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
 
       if (left->getWidth() > right->getWidth())
         right = ZExtExpr::create(right, left->getWidth());
@@ -2564,9 +2650,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
       ref<Expr> result = SDivExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2592,9 +2678,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 #endif
       ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2603,14 +2689,17 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FRem: {
+    const Cell &lCell = eval(ki, 0, state);
+    const Cell &rCell = eval(ki, 1, state);
+
     if (PrecisionError) {
-      ref<Expr> left = eval(ki, 0, state).value;
-      ref<Expr> right = eval(ki, 1, state).value;
+      ref<Expr> left = lCell.value;
+      ref<Expr> right = rCell.value;
       ref<Expr> result = SRemExpr::create(left, right);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2634,9 +2723,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 #endif
       ref<Expr> result = ConstantExpr::alloc(Res.bitcastToAPInt());
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2650,15 +2739,15 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       Cell c = eval(ki, 0, state);
       ref<Expr> result =
           ExtractExpr::create(c.value, 0, getWidthForLLVMType(ci->getType()));
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(c.value);
+      std::vector<Cell> arguments;
+      arguments.push_back(c);
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
     } else {
       FPTruncInst *fi = cast<FPTruncInst>(i);
       Expr::Width resultType = getWidthForLLVMType(fi->getType());
-      ref<ConstantExpr> arg =
-          toConstant(state, eval(ki, 0, state).value, "floating point");
+      Cell c = eval(ki, 0, state);
+      ref<ConstantExpr> arg = toConstant(state, c.value, "floating point");
       if (!fpWidthToSemantics(arg->getWidth()) || resultType > arg->getWidth())
         return terminateStateOnExecError(state,
                                          "Unsupported FPTrunc operation");
@@ -2674,8 +2763,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
                   llvm::APFloat::rmNearestTiesToEven, &losesInfo);
       ref<Expr> result = ConstantExpr::alloc(Res);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(arg);
+      std::vector<Cell> arguments;
+      Cell argCell;
+      argCell.value = arg;
+      argCell.error = c.error;
+      arguments.push_back(argCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2689,15 +2781,15 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       Cell c = eval(ki, 0, state);
       ref<Expr> result =
           SExtExpr::create(c.value, getWidthForLLVMType(ci->getType()));
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(c.value);
+      std::vector<Cell> arguments;
+      arguments.push_back(c);
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
     } else {
       FPExtInst *fi = cast<FPExtInst>(i);
       Expr::Width resultType = getWidthForLLVMType(fi->getType());
-      ref<ConstantExpr> arg =
-          toConstant(state, eval(ki, 0, state).value, "floating point");
+      Cell c = eval(ki, 0, state);
+      ref<ConstantExpr> arg = toConstant(state, c.value, "floating point");
       if (!fpWidthToSemantics(arg->getWidth()) || arg->getWidth() > resultType)
         return terminateStateOnExecError(state, "Unsupported FPExt operation");
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
@@ -2711,8 +2803,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
                   llvm::APFloat::rmNearestTiesToEven, &losesInfo);
       ref<Expr> result = ConstantExpr::alloc(Res);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(arg);
+      std::vector<Cell> arguments;
+      Cell argCell;
+      argCell.value = arg;
+      argCell.error = c.error;
+      arguments.push_back(argCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2721,18 +2816,19 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FPToUI: {
+    const Cell &c = eval(ki, 0, state);
+
     if (PrecisionError) {
       // We simply assume equality
-      ref<Expr> result = eval(ki, 0, state).value;
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(result);
+      ref<Expr> result = c.value;
+      std::vector<Cell> arguments;
+      arguments.push_back(c);
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
     } else {
       FPToUIInst *fi = cast<FPToUIInst>(i);
       Expr::Width resultType = getWidthForLLVMType(fi->getType());
-      ref<ConstantExpr> arg =
-          toConstant(state, eval(ki, 0, state).value, "floating point");
+      ref<ConstantExpr> arg = toConstant(state, c.value, "floating point");
       if (!fpWidthToSemantics(arg->getWidth()) || resultType > 64)
         return terminateStateOnExecError(state, "Unsupported FPToUI operation");
 
@@ -2748,8 +2844,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
                            llvm::APFloat::rmTowardZero, &isExact);
       ref<Expr> result = ConstantExpr::alloc(value, resultType);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(arg);
+      std::vector<Cell> arguments;
+      Cell argCell;
+      argCell.value = arg;
+      argCell.error = c.error;
+      arguments.push_back(argCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2758,18 +2857,19 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::FPToSI: {
+    const Cell &c = eval(ki, 0, state);
+
     if (PrecisionError) {
       // We simply assume equality
-      ref<Expr> result = eval(ki, 0, state).value;
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(result);
+      ref<Expr> result = c.value;
+      std::vector<Cell> arguments;
+      arguments.push_back(c);
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
     } else {
       FPToSIInst *fi = cast<FPToSIInst>(i);
       Expr::Width resultType = getWidthForLLVMType(fi->getType());
-      ref<ConstantExpr> arg =
-          toConstant(state, eval(ki, 0, state).value, "floating point");
+      ref<ConstantExpr> arg = toConstant(state, c.value, "floating point");
       if (!fpWidthToSemantics(arg->getWidth()) || resultType > 64)
         return terminateStateOnExecError(state, "Unsupported FPToSI operation");
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
@@ -2785,8 +2885,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
                            llvm::APFloat::rmTowardZero, &isExact);
       ref<Expr> result = ConstantExpr::alloc(value, resultType);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(arg);
+      std::vector<Cell> arguments;
+      Cell argCell;
+      argCell.value = arg;
+      argCell.error = c.error;
+      arguments.push_back(argCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2795,18 +2898,19 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::UIToFP: {
+    const Cell &c = eval(ki, 0, state);
+
     if (PrecisionError) {
       // We simply assume equality
-      ref<Expr> result = eval(ki, 0, state).value;
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(result);
+      ref<Expr> result = c.value;
+      std::vector<Cell> arguments;
+      arguments.push_back(c);
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
     } else {
     UIToFPInst *fi = cast<UIToFPInst>(i);
     Expr::Width resultType = getWidthForLLVMType(fi->getType());
-    ref<ConstantExpr> arg = toConstant(state, eval(ki, 0, state).value,
-                                       "floating point");
+    ref<ConstantExpr> arg = toConstant(state, c.value, "floating point");
     const llvm::fltSemantics *semantics = fpWidthToSemantics(resultType);
     if (!semantics)
       return terminateStateOnExecError(state, "Unsupported UIToFP operation");
@@ -2815,8 +2919,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
                        llvm::APFloat::rmNearestTiesToEven);
     ref<Expr> result = ConstantExpr::alloc(f);
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(arg);
+    std::vector<Cell> arguments;
+    Cell argCell;
+    argCell.value = arg;
+    argCell.error = c.error;
+    arguments.push_back(argCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
@@ -2825,11 +2932,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   }
 
   case Instruction::SIToFP: {
+    const Cell &c = eval(ki, 0, state);
+
     if (PrecisionError) {
       // We simply assume equality
-      ref<Expr> result = eval(ki, 0, state).value;
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(result);
+      ref<Expr> result = c.value;
+      std::vector<Cell> arguments;
+      arguments.push_back(c);
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
     } else {
@@ -2845,8 +2954,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
                          llvm::APFloat::rmNearestTiesToEven);
       ref<Expr> result = ConstantExpr::alloc(f);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(arg);
+      std::vector<Cell> arguments;
+      Cell argCell;
+      argCell.value = arg;
+      argCell.error = c.error;
+      arguments.push_back(argCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -2863,14 +2975,17 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       switch (fi->getPredicate()) {
       // Predicates which only care about whether or not the operands are NaNs.
       case FCmpInst::FCMP_ORD: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         // Always true
         ref<Expr> result = ConstantExpr::create(1, Expr::Bool);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
@@ -2878,14 +2993,17 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
         break;
       }
       case FCmpInst::FCMP_UNO: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         // Always false
         ref<Expr> result = ConstantExpr::create(0, Expr::Bool);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
@@ -2896,13 +3014,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       // comparisons return true if either operand is NaN.
       case FCmpInst::FCMP_UEQ:
       case FCmpInst::FCMP_OEQ: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         ref<Expr> result = EqExpr::create(left, right);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
@@ -2910,13 +3031,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       }
       case FCmpInst::FCMP_UGT:
       case FCmpInst::FCMP_OGT: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         ref<Expr> result = UgtExpr::create(left, right);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
@@ -2925,13 +3049,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
       case FCmpInst::FCMP_UGE:
       case FCmpInst::FCMP_OGE: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         ref<Expr> result = SgeExpr::create(left, right);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
@@ -2940,13 +3067,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
       case FCmpInst::FCMP_ULT:
       case FCmpInst::FCMP_OLT: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         ref<Expr> result = SltExpr::create(left, right);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
@@ -2955,13 +3085,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
       case FCmpInst::FCMP_ULE:
       case FCmpInst::FCMP_OLE: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         ref<Expr> result = SleExpr::create(left, right);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
@@ -2970,13 +3103,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
       case FCmpInst::FCMP_UNE:
       case FCmpInst::FCMP_ONE: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         ref<Expr> result = NeExpr::create(left, right);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
@@ -2986,28 +3122,34 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       default:
         assert(0 && "Invalid FCMP predicate!");
       case FCmpInst::FCMP_FALSE: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         // Always false
         ref<Expr> result = ConstantExpr::create(0, Expr::Bool);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
         break;
       }
       case FCmpInst::FCMP_TRUE: {
-        left = eval(ki, 0, state).value;
-        right = eval(ki, 1, state).value;
+        const Cell &lCell = eval(ki, 0, state);
+        const Cell &rCell = eval(ki, 1, state);
+
+        left = lCell.value;
+        right = rCell.value;
         // Always false
         ref<Expr> result = ConstantExpr::create(1, Expr::Bool);
 
-        std::vector<ref<Expr> > arguments;
-        arguments.push_back(left);
-        arguments.push_back(right);
+        std::vector<Cell> arguments;
+        arguments.push_back(lCell);
+        arguments.push_back(rCell);
 
         bindLocal(ki, state, result, state.symbolicError->propagateError(
                                          this, ki, result, arguments));
@@ -3015,11 +3157,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       }
       }
     } else {
+      const Cell &lCell = eval(ki, 0, state);
+      const Cell &rCell = eval(ki, 1, state);
+
       FCmpInst *fi = cast<FCmpInst>(i);
-      ref<ConstantExpr> left =
-          toConstant(state, eval(ki, 0, state).value, "floating point");
+      ref<ConstantExpr> left = toConstant(state, lCell.value, "floating point");
       ref<ConstantExpr> right =
-          toConstant(state, eval(ki, 1, state).value, "floating point");
+          toConstant(state, rCell.value, "floating point");
       if (!fpWidthToSemantics(left->getWidth()) ||
           !fpWidthToSemantics(right->getWidth()))
         return terminateStateOnExecError(state, "Unsupported FCmp operation");
@@ -3111,9 +3255,14 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
       ref<Expr> result = ConstantExpr::alloc(Result, Expr::Bool);
 
-      std::vector<ref<Expr> > arguments;
-      arguments.push_back(left);
-      arguments.push_back(right);
+      std::vector<Cell> arguments;
+      Cell lArg, rArg;
+      lArg.value = left;
+      lArg.error = lCell.error;
+      rArg.value = right;
+      rArg.error = rCell.error;
+      arguments.push_back(lCell);
+      arguments.push_back(rCell);
 
       bindLocal(ki, state, result, state.symbolicError->propagateError(
                                        this, ki, result, arguments));
@@ -3121,10 +3270,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     break;
   }
   case Instruction::InsertValue: {
+    const Cell &aggCell = eval(ki, 0, state);
+    const Cell &valCell = eval(ki, 1, state);
+
     KGEPInstruction *kgepi = static_cast<KGEPInstruction*>(ki);
 
-    ref<Expr> agg = eval(ki, 0, state).value;
-    ref<Expr> val = eval(ki, 1, state).value;
+    ref<Expr> agg = aggCell.value;
+    ref<Expr> val = valCell.value;
 
     ref<Expr> l = NULL, r = NULL;
     unsigned lOffset = kgepi->offset*8, rOffset = kgepi->offset*8 + val->getWidth();
@@ -3144,23 +3296,25 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     else
       result = val;
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(agg);
-    arguments.push_back(val);
+    std::vector<Cell> arguments;
+    arguments.push_back(aggCell);
+    arguments.push_back(valCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));
     break;
   }
   case Instruction::ExtractValue: {
+    const Cell &aggCell = eval(ki, 0, state);
+
     KGEPInstruction *kgepi = static_cast<KGEPInstruction*>(ki);
 
-    ref<Expr> agg = eval(ki, 0, state).value;
+    ref<Expr> agg = aggCell.value;
 
     ref<Expr> result = ExtractExpr::create(agg, kgepi->offset*8, getWidthForLLVMType(i->getType()));
 
-    std::vector<ref<Expr> > arguments;
-    arguments.push_back(agg);
+    std::vector<Cell> arguments;
+    arguments.push_back(aggCell);
 
     bindLocal(ki, state, result,
               state.symbolicError->propagateError(this, ki, result, arguments));

@@ -221,7 +221,7 @@ void SymbolicError::deregisterLoopIfExited(Executor *executor,
 
 ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
                                         ref<Expr> result,
-                                        std::vector<ref<Expr> > &arguments,
+                                        std::vector<Cell> &arguments,
                                         unsigned int phiResultWidth) {
   ref<Expr> error =
       errorState->propagateError(executor, ki->inst, result, arguments);
