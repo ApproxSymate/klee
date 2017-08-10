@@ -132,11 +132,8 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
     }
   }
 
-  stream << errorVar << " == (";
-  stream << PrettyExpressionBuilder::construct(e);
-  stream << ") && ";
-  stream << "(" << errorVar << " <= " << bound << ") && ";
-  stream << "(" << errorVar << " >= -" << bound << ")\n";
+  stream << "\n";
+  stream << e;
   stream.flush();
 }
 
@@ -364,7 +361,25 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
   case llvm::Instruction::AShr:
   case llvm::Instruction::FPExt:
   case llvm::Instruction::FPTrunc:
-  case llvm::Instruction::GetElementPtr:
+  case llvm::Instruction::GetElementPtr: {
+    // Check if base is symbolic and whether a symbolic error value already
+    // exists for the newly pointed element
+    ref<Expr> newError;
+    if (isInStoredError(result)) {
+      newError = retrieveStoredError(result);
+    } else {
+      ref<Expr> error = retrieveStoredError(arguments[0]);
+      std::string errorName =
+          llvm::dyn_cast<ReadExpr>(error)->updates.root->name;
+      const Array *newErrorArray =
+          errorArrayCache.CreateArray(errorName, Expr::Int8);
+      UpdateList ul(newErrorArray, 0);
+      ref<Expr> offset = SubExpr::create(result, arguments[0]);
+      newError = ReadExpr::create(ul, offset);
+      executeStoreSimple(instr, result, newError);
+    }
+    return newError;
+  }
   case llvm::Instruction::LShr:
   case llvm::Instruction::Shl:
   case llvm::Instruction::SExt:
@@ -413,7 +428,7 @@ void ErrorState::executeStoreSimple(llvm::Instruction *inst, ref<Expr> address,
 }
 
 ref<Expr> ErrorState::retrieveStoredError(ref<Expr> address) const {
-  ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+  ref<Expr> error;
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
     std::map<uintptr_t, ref<Expr> >::const_iterator it =
         storedError.find(cp->getZExtValue());
@@ -427,6 +442,18 @@ ref<Expr> ErrorState::retrieveStoredError(ref<Expr> address) const {
     error = ConstantExpr::create(0, Expr::Int8);
   }
   return error;
+}
+
+bool ErrorState::isInStoredError(ref<Expr> address) {
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    std::map<uintptr_t, ref<Expr> >::const_iterator it =
+        storedError.find(cp->getZExtValue());
+    if (it != storedError.end()) {
+      return true;
+    } else
+      return false;
+  } else
+    return false;
 }
 
 ref<Expr> ErrorState::executeLoad(llvm::Value *value, ref<Expr> address) {

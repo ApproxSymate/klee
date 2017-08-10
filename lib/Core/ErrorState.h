@@ -66,6 +66,8 @@ public:
 
   ref<Expr> retrieveStoredError(ref<Expr> address) const;
 
+  bool isInStoredError(ref<Expr> address);
+
   ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address);
 
   /// \brief Overwrite the contents of the current error state with another
