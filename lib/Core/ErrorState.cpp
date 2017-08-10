@@ -133,7 +133,7 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
   }
 
   stream << "\n";
-  stream << e;
+  stream << PrettyExpressionBuilder::construct(e);
   stream.flush();
 }
 
