@@ -41,6 +41,18 @@ private:
 
   std::map<uintptr_t, ref<Expr> > storedError;
 
+  bool isInStoredError(ref<Expr> address) const {
+    if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+      std::map<uintptr_t, ref<Expr> >::const_iterator it =
+          storedError.find(cp->getZExtValue());
+      if (it != storedError.end()) {
+        return true;
+      } else
+        return false;
+    } else
+      return false;
+  }
+
 public:
   ErrorState() : refCount(0) {}
 
@@ -65,8 +77,6 @@ public:
                           ref<Expr> error);
 
   ref<Expr> retrieveStoredError(ref<Expr> address) const;
-
-  bool isInStoredError(ref<Expr> address);
 
   ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address);
 
