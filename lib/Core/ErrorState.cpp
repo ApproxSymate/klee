@@ -429,7 +429,7 @@ void ErrorState::executeStoreSimple(llvm::Instruction *inst, ref<Expr> address,
 
 ref<Expr> ErrorState::retrieveStoredError(ref<Expr> address) const {
   ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
-  ;
+
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
     std::map<uintptr_t, ref<Expr> >::const_iterator it =
         storedError.find(cp->getZExtValue());
