@@ -27,6 +27,9 @@
 
 #include <string>
 
+extern const std::string array_prefix32;
+extern const std::string array_prefix64;
+
 namespace klee {
 
 /// Encapsulates functionality of expression builder

@@ -28,6 +28,9 @@ using namespace klee;
 
 namespace klee {
 
+const std::string array_prefix32 = "__arr32__";
+const std::string array_prefix64 = "__arr64__";
+
 bool outputFunctionName(llvm::Value *value, llvm::raw_ostream &stream) {
   llvm::Instruction *inst = llvm::dyn_cast<llvm::Instruction>(value);
   if (inst) {
@@ -169,9 +172,27 @@ std::string PrettyExpressionBuilder::writeExpr(std::string array,
                                                std::string value) {
   return "update(" + array + "," + index + "," + value + ")";
 }
+
 std::string PrettyExpressionBuilder::readExpr(std::string array,
                                               std::string index) {
-  return array;
+  int array_index;
+  if (!array.compare(0, array_prefix32.size(), array_prefix32)) {
+    std::istringstream ss(index);
+    ss >> array_index;
+    array_index /= 4;
+    std::ostringstream so;
+    so << array_index;
+    return array.erase(0, 9) + "[" + so.str() + "]";
+  } else if (!array.compare(0, array_prefix64.size(), array_prefix64)) {
+    std::istringstream ss(index);
+    ss >> array_index;
+    array_index /= 8;
+    std::ostringstream so;
+    so << array_index;
+    return array.erase(0, 9) + "[" + so.str() + "]";
+  } else {
+    return array;
+  }
 }
 
 // ITE-expression constructor
