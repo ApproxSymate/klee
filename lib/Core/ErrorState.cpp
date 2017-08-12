@@ -132,8 +132,9 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
     }
   }
 
-  stream << "\nAbsolute bound = ";
+  stream << "\nOutput Error: ";
   stream << PrettyExpressionBuilder::construct(e);
+  stream << "\nAbsolute bound: " << bound;
   stream.flush();
 }
 
