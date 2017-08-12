@@ -101,10 +101,6 @@ public:
                            ref<Expr> result, std::vector<Cell> &arguments,
                            unsigned int phiResultWidth = 0);
 
-  ref<Expr> retrieveError(llvm::Value *value) {
-    return errorState->retrieveError(value);
-  }
-
   bool checkStoredError(ref<Expr> address) {
     return errorState->hasStoredError(address);
   }
