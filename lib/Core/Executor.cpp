@@ -1825,6 +1825,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     Value *fp = cs.getCalledValue();
     Function *f = getTargetFunction(fp, state);
 
+    if (f->getName().str() == "klee_bound_error") {
+      ref<Expr> error = eval(ki, 1, state).error;
+      state.symbolicError->setKleeBoundErrorExpr(error);
+    }
+
     // Skip debug intrinsics, we can't evaluate their metadata arguments.
     if (f && isDebugIntrinsic(f, kmodule))
       break;

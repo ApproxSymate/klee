@@ -54,6 +54,10 @@ class SymbolicError {
   /// \brief Temporary PHI result initial error amount
   std::map<KInstruction *, ref<Expr> > tmpPhiResultInitError;
 
+  /// \brief Temporary storage to store the error expression for
+  /// klee_bound_error call
+  ref<Expr> kleeBoundErrorExpr;
+
 public:
   SymbolicError() { errorState = ref<ErrorState>(new ErrorState()); }
 
@@ -94,7 +98,7 @@ public:
                               llvm::Instruction *inst);
 
   void outputErrorBound(llvm::Instruction *inst, double bound) {
-    errorState->outputErrorBound(inst, bound);
+    errorState->outputErrorBound(inst, kleeBoundErrorExpr, bound);
   }
 
   ref<Expr> propagateError(Executor *executor, KInstruction *ki,
@@ -121,6 +125,8 @@ public:
   ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address) {
     return errorState->executeLoad(value, address);
   }
+
+  void setKleeBoundErrorExpr(ref<Expr> error) { kleeBoundErrorExpr = error; }
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;

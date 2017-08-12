@@ -48,7 +48,7 @@ public:
 
   ~ErrorState();
 
-  void outputErrorBound(llvm::Instruction *inst, double bound);
+  void outputErrorBound(llvm::Instruction *inst, ref<Expr> error, double bound);
 
   ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
                            ref<Expr> result, std::vector<Cell> &arguments);

@@ -87,9 +87,8 @@ ref<Expr> ErrorState::getError(Executor *executor, ref<Expr> valueExpr,
 
 ErrorState::~ErrorState() {}
 
-void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
-  ref<Expr> e = ConstantExpr::create(0, Expr::Int8);
-
+void ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
+                                  double bound) {
   llvm::raw_string_ostream stream(outputString);
   if (!outputString.empty()) {
     stream << "\n------------------------\n";
@@ -113,7 +112,7 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
   }
 
   stream << "\nOutput Error: ";
-  stream << PrettyExpressionBuilder::construct(e);
+  stream << PrettyExpressionBuilder::construct(error);
   stream << "\nAbsolute Bound: " << bound << "\n";
   stream.flush();
 }
