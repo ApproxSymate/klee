@@ -213,17 +213,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       rError = getError(executor, rValue, rOp);
     }
 
-    ref<Expr> extendedLeft = lError;
-    if (lError->getWidth() != lValue->getWidth()) {
-      extendedLeft = ZExtExpr::create(lError, lValue->getWidth());
-    }
-    ref<Expr> extendedRight = rError;
-    if (rError->getWidth() != rValue->getWidth()) {
-      extendedRight = ZExtExpr::create(rError, rValue->getWidth());
-    }
-
-    result = ExtractExpr::create(AddExpr::create(extendedLeft, extendedRight),
-                                 0, Expr::Int8);
+    result = AddExpr::create(lError, rError);
     return result;
   }
   case llvm::Instruction::FDiv:
@@ -243,17 +233,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       rError = getError(executor, rValue, rOp);
     }
 
-    ref<Expr> extendedLeft = lError;
-    if (lError->getWidth() != lValue->getWidth()) {
-      extendedLeft = ZExtExpr::create(lError, lValue->getWidth());
-    }
-    ref<Expr> extendedRight = rError;
-    if (rError->getWidth() != rValue->getWidth()) {
-      extendedRight = ZExtExpr::create(rError, rValue->getWidth());
-    }
-
-    result = ExtractExpr::create(AddExpr::create(extendedLeft, extendedRight),
-                                 0, Expr::Int8);
+    result = AddExpr::create(lError, rError);
     return result;
   }
   case llvm::Instruction::SDiv: {
@@ -272,17 +252,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       rError = getError(executor, rValue, rOp);
     }
 
-    ref<Expr> extendedLeft = lError;
-    if (lError->getWidth() != lValue->getWidth()) {
-      extendedLeft = ZExtExpr::create(lError, lValue->getWidth());
-    }
-    ref<Expr> extendedRight = rError;
-    if (rError->getWidth() != rValue->getWidth()) {
-      extendedRight = ZExtExpr::create(rError, rValue->getWidth());
-    }
-
-    result = ExtractExpr::create(AddExpr::create(extendedLeft, extendedRight),
-                                 0, Expr::Int8);
+    result = AddExpr::create(lError, rError);
     return result;
   }
   case llvm::Instruction::GetElementPtr: {
