@@ -28,8 +28,6 @@ public:
   unsigned refCount;
 
 private:
-  std::map<llvm::Value *, ref<Expr> > valueErrorMap;
-
   std::map<const Array *, const Array *> arrayErrorArrayMap;
 
   ref<Expr> getError(Executor *executor, ref<Expr> valueExpr,
@@ -46,8 +44,6 @@ public:
 
   ErrorState(ErrorState &symErr) : refCount(0) {
     storedError = symErr.storedError;
-    // FIXME: Simple copy for now.
-    valueErrorMap = symErr.valueErrorMap;
   }
 
   ~ErrorState();
@@ -56,8 +52,6 @@ public:
 
   ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
                            ref<Expr> result, std::vector<Cell> &arguments);
-
-  ref<Expr> retrieveError(llvm::Value *value) { return valueErrorMap[value]; }
 
   std::string &getOutputString() { return outputString; }
 
