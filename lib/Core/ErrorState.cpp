@@ -105,11 +105,6 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
     e = ConstantExpr::create(0, Expr::Int8);
   }
 
-  std::string errorVar;
-  llvm::raw_string_ostream errorVarStream(errorVar);
-  errorVarStream << "__error__" << reinterpret_cast<uint64_t>(e.get());
-  errorVarStream.flush();
-
   llvm::raw_string_ostream stream(outputString);
   if (!outputString.empty()) {
     stream << "\n------------------------\n";
@@ -134,7 +129,7 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
 
   stream << "\nOutput Error: ";
   stream << PrettyExpressionBuilder::construct(e);
-  stream << "\nAbsolute bound: " << bound;
+  stream << "\nAbsolute bound: " << bound << "\n";
   stream.flush();
 }
 
