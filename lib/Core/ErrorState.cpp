@@ -129,7 +129,7 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
 
   stream << "\nOutput Error: ";
   stream << PrettyExpressionBuilder::construct(e);
-  stream << "\nAbsolute bound: " << bound << "\n";
+  stream << "\nAbsolute Bound: " << bound << "\n";
   stream.flush();
 }
 
@@ -323,23 +323,35 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     return result;
   }
   case llvm::Instruction::GetElementPtr: {
-    // Check if base is symbolic and whether a symbolic error value already
-    // exists for the newly pointed element
-    ref<Expr> newError;
-    if (isInStoredError(result)) {
-      newError = retrieveStoredError(result);
-    } else {
-      ref<Expr> error = retrieveStoredError(arguments[0].value);
-      std::string errorName =
-          llvm::dyn_cast<ReadExpr>(error)->updates.root->name;
-      const Array *newErrorArray =
-          errorArrayCache.CreateArray(errorName, Expr::Int8);
-      UpdateList ul(newErrorArray, 0);
-      ref<Expr> offset = SubExpr::create(result, arguments[0].value);
-      newError = ReadExpr::create(ul, offset);
-      executeStoreSimple(instr, result, newError);
+    // propagate error
+    ref<Expr> error = arguments.at(0).error;
+    if (error.isNull()) {
+      error = ConstantExpr::create(0, Expr::Int8);
+      llvm::Value *v = instr->getOperand(0);
+      std::map<llvm::Value *, ref<Expr> >::iterator it = valueErrorMap.find(v);
+      if (it != valueErrorMap.end()) {
+        error = valueErrorMap[v];
+      }
+      if (error->getWidth() > Expr::Int8)
+        error = ExtractExpr::create(error, 0, Expr::Int8);
     }
-    return newError;
+    valueErrorMap[instr] = error;
+
+    if (!hasStoredError(result)) {
+      ref<Expr> baseError = retrieveStoredError(arguments[0].value);
+      // The following also performs nullity check on the result of the cast. If
+      // the type does not match, re is NULL
+      if (ReadExpr *re = llvm::dyn_cast<ReadExpr>(baseError)) {
+        std::string errorName = re->updates.root->name;
+        const Array *newErrorArray =
+            errorArrayCache.CreateArray(errorName, Expr::Int8);
+        UpdateList ul(newErrorArray, 0);
+        ref<Expr> offset = SubExpr::create(result, arguments[0].value);
+        ref<Expr> newError = ReadExpr::create(ul, offset);
+        executeStoreSimple(instr, result, newError);
+      }
+    }
+    return error;
   }
   case llvm::Instruction::FCmp:
   case llvm::Instruction::ICmp: {
