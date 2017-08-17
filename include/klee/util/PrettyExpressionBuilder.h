@@ -27,6 +27,8 @@
 
 #include <string>
 
+extern const std::string array_prefix8;
+extern const std::string array_prefix16;
 extern const std::string array_prefix32;
 extern const std::string array_prefix64;
 

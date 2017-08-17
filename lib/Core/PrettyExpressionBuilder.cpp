@@ -28,6 +28,8 @@ using namespace klee;
 
 namespace klee {
 
+const std::string array_prefix8 = "__arr8__";
+const std::string array_prefix16 = "__arr16__";
 const std::string array_prefix32 = "__arr32__";
 const std::string array_prefix64 = "__arr64__";
 
@@ -176,7 +178,20 @@ std::string PrettyExpressionBuilder::writeExpr(std::string array,
 std::string PrettyExpressionBuilder::readExpr(std::string array,
                                               std::string index) {
   int array_index;
-  if (!array.compare(0, array_prefix32.size(), array_prefix32)) {
+  if (!array.compare(0, array_prefix8.size(), array_prefix8)) {
+    std::istringstream ss(index);
+    ss >> array_index;
+    std::ostringstream so;
+    so << array_index;
+    return array.erase(0, 9) + "[" + so.str() + "]";
+  } else if (!array.compare(0, array_prefix16.size(), array_prefix16)) {
+    std::istringstream ss(index);
+    ss >> array_index;
+    array_index /= 2;
+    std::ostringstream so;
+    so << array_index;
+    return array.erase(0, 9) + "[" + so.str() + "]";
+  } else if (!array.compare(0, array_prefix32.size(), array_prefix32)) {
     std::istringstream ss(index);
     ss >> array_index;
     array_index /= 4;
