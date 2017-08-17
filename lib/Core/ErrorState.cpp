@@ -105,11 +105,6 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
     e = ConstantExpr::create(0, Expr::Int8);
   }
 
-  std::string errorVar;
-  llvm::raw_string_ostream errorVarStream(errorVar);
-  errorVarStream << "__error__" << reinterpret_cast<uint64_t>(e.get());
-  errorVarStream.flush();
-
   llvm::raw_string_ostream stream(outputString);
   if (!outputString.empty()) {
     stream << "\n------------------------\n";
@@ -132,11 +127,9 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
     }
   }
 
-  stream << errorVar << " == (";
+  stream << "\nOutput Error: ";
   stream << PrettyExpressionBuilder::construct(e);
-  stream << ") && ";
-  stream << "(" << errorVar << " <= " << bound << ") && ";
-  stream << "(" << errorVar << " >= -" << bound << ")\n";
+  stream << "\nAbsolute Bound: " << bound << "\n";
   stream.flush();
 }
 
@@ -329,6 +322,37 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     valueErrorMap[instr] = result;
     return result;
   }
+  case llvm::Instruction::GetElementPtr: {
+    // propagate error
+    ref<Expr> error = arguments.at(0).error;
+    if (error.isNull()) {
+      error = ConstantExpr::create(0, Expr::Int8);
+      llvm::Value *v = instr->getOperand(0);
+      std::map<llvm::Value *, ref<Expr> >::iterator it = valueErrorMap.find(v);
+      if (it != valueErrorMap.end()) {
+        error = valueErrorMap[v];
+      }
+      if (error->getWidth() > Expr::Int8)
+        error = ExtractExpr::create(error, 0, Expr::Int8);
+    }
+    valueErrorMap[instr] = error;
+
+    if (!hasStoredError(result)) {
+      ref<Expr> baseError = retrieveStoredError(arguments[0].value);
+      // The following also performs nullity check on the result of the cast. If
+      // the type does not match, re is NULL
+      if (ReadExpr *re = llvm::dyn_cast<ReadExpr>(baseError)) {
+        std::string errorName = re->updates.root->name;
+        const Array *newErrorArray =
+            errorArrayCache.CreateArray(errorName, Expr::Int8);
+        UpdateList ul(newErrorArray, 0);
+        ref<Expr> offset = SubExpr::create(result, arguments[0].value);
+        ref<Expr> newError = ReadExpr::create(ul, offset);
+        executeStoreSimple(instr, result, newError);
+      }
+    }
+    return error;
+  }
   case llvm::Instruction::FCmp:
   case llvm::Instruction::ICmp: {
     // We assume that decision is precisely made
@@ -364,7 +388,6 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
   case llvm::Instruction::AShr:
   case llvm::Instruction::FPExt:
   case llvm::Instruction::FPTrunc:
-  case llvm::Instruction::GetElementPtr:
   case llvm::Instruction::LShr:
   case llvm::Instruction::Shl:
   case llvm::Instruction::SExt:
@@ -414,6 +437,7 @@ void ErrorState::executeStoreSimple(llvm::Instruction *inst, ref<Expr> address,
 
 ref<Expr> ErrorState::retrieveStoredError(ref<Expr> address) const {
   ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
     std::map<uintptr_t, ref<Expr> >::const_iterator it =
         storedError.find(cp->getZExtValue());
