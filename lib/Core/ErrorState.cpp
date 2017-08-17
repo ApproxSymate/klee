@@ -453,6 +453,18 @@ ref<Expr> ErrorState::retrieveStoredError(ref<Expr> address) const {
   return error;
 }
 
+bool ErrorState::hasStoredError(ref<Expr> address) const {
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    std::map<uintptr_t, ref<Expr> >::const_iterator it =
+        storedError.find(cp->getZExtValue());
+    if (it != storedError.end()) {
+      return true;
+    } else
+      return false;
+  } else
+    return false;
+}
+
 ref<Expr> ErrorState::executeLoad(llvm::Value *value, ref<Expr> address) {
   ref<Expr> error = retrieveStoredError(address);
   valueErrorMap[value] = error;

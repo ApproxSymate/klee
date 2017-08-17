@@ -106,11 +106,11 @@ public:
   }
 
   bool checkStoredError(ref<Expr> address) {
-	  return errorState->isInStoredError(address);
+    return errorState->hasStoredError(address);
   }
 
   ref<Expr> retrieveStoredError(ref<Expr> address) {
-	  return errorState->retrieveStoredError(address);
+    return errorState->retrieveStoredError(address);
   }
 
   std::string &getOutputString() { return errorState->getOutputString(); }
