@@ -90,22 +90,22 @@ std::string PrettyExpressionBuilder::eqExpr(std::string a, std::string b) {
 std::string PrettyExpressionBuilder::bvLeftShift(std::string expr,
                                                  unsigned shift) {
   std::ostringstream stream;
-  stream << "(" << expr << " \\<\\< " << shift << ")";
+  stream << "(" << expr << " << " << shift << ")";
   return stream.str();
 }
 std::string PrettyExpressionBuilder::bvRightShift(std::string expr,
                                                   unsigned shift) {
   std::ostringstream stream;
-  stream << "(" << expr << " \\>\\> " << shift << ")";
+  stream << "(" << expr << " >> " << shift << ")";
   return stream.str();
 }
 std::string PrettyExpressionBuilder::bvVarLeftShift(std::string expr,
                                                     std::string shift) {
-  return "(" + expr + " \\<\\< " + shift + ")";
+  return "(" + expr + " << " + shift + ")";
 }
 std::string PrettyExpressionBuilder::bvVarRightShift(std::string expr,
                                                      std::string shift) {
-  return "(" + expr + " \\>\\> " + shift + ")";
+  return "(" + expr + " >> " + shift + ")";
 }
 std::string PrettyExpressionBuilder::bvVarArithRightShift(std::string expr,
                                                           std::string shift) {
