@@ -183,7 +183,7 @@ std::string PrettyExpressionBuilder::readExpr(std::string array,
     ss >> array_index;
     std::ostringstream so;
     so << array_index;
-    return array.erase(0, 9) + "[" + so.str() + "]";
+    return array.erase(0, 8) + "[" + so.str() + "]";
   } else if (!array.compare(0, array_prefix16.size(), array_prefix16)) {
     std::istringstream ss(index);
     ss >> array_index;
