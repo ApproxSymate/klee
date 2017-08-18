@@ -105,6 +105,14 @@ public:
     return errorState->retrieveError(value);
   }
 
+  bool checkStoredError(ref<Expr> address) {
+    return errorState->hasStoredError(address);
+  }
+
+  ref<Expr> retrieveStoredError(ref<Expr> address) {
+    return errorState->retrieveStoredError(address);
+  }
+
   std::string &getOutputString() { return errorState->getOutputString(); }
 
   void executeStore(llvm::Instruction *inst, ref<Expr> address, ref<Expr> value,

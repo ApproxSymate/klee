@@ -1112,7 +1112,10 @@ const Cell& Executor::eval(KInstruction *ki, unsigned index,
   if (vnumber < 0) {
     unsigned index = -vnumber - 2;
     Cell &ret = kmodule->constantTable[index];
-    ret.error = ConstantExpr::create(0, Expr::Int8);
+    if (state.symbolicError->checkStoredError(ret.value))
+      ret.error = state.symbolicError->retrieveStoredError(ret.value);
+    else
+      ret.error = ConstantExpr::create(0, Expr::Int8);
     return ret;
   } else {
     unsigned index = vnumber;
