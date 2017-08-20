@@ -65,6 +65,11 @@ public:
                        const std::vector<const Array *> *objects,
                        std::vector<std::vector<unsigned char> > *values,
                        bool &hasSolution);
+  SolverRunStatus
+  handleOptimizeResponse(::Z3_optimize theSolver, ::Z3_lbool satisfiable,
+                         const std::vector<const Array *> *objects,
+                         std::vector<std::vector<unsigned char> > *values,
+                         bool &hasSolution);
   SolverRunStatus getOperationStatusCode();
 };
 
@@ -319,6 +324,101 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
   case Z3_L_UNDEF: {
     ::Z3_string reason =
         ::Z3_solver_get_reason_unknown(builder->ctx, theSolver);
+    if (strcmp(reason, "timeout") == 0 || strcmp(reason, "canceled") == 0) {
+      return SolverImpl::SOLVER_RUN_STATUS_TIMEOUT;
+    }
+    if (strcmp(reason, "unknown") == 0) {
+      return SolverImpl::SOLVER_RUN_STATUS_FAILURE;
+    }
+    klee_warning("Unexpected solver failure. Reason is \"%s,\"\n", reason);
+    abort();
+  }
+  default:
+    llvm_unreachable("unhandled Z3 result");
+  }
+}
+
+SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
+    ::Z3_optimize theSolver, ::Z3_lbool satisfiable,
+    const std::vector<const Array *> *objects,
+    std::vector<std::vector<unsigned char> > *values, bool &hasSolution) {
+  switch (satisfiable) {
+  case Z3_L_TRUE: {
+    hasSolution = true;
+    if (!objects) {
+      // No assignment is needed
+      assert(values == NULL);
+      return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE;
+    }
+    assert(values && "values cannot be nullptr");
+    ::Z3_model theModel = Z3_optimize_get_model(builder->ctx, theSolver);
+    assert(theModel && "Failed to retrieve model");
+    Z3_model_inc_ref(builder->ctx, theModel);
+    values->reserve(objects->size());
+    for (std::vector<const Array *>::const_iterator it = objects->begin(),
+                                                    ie = objects->end();
+         it != ie; ++it) {
+      const Array *array = *it;
+      std::vector<unsigned char> data;
+
+      data.reserve(8);
+      unsigned offset = 0;
+
+      // We can't use Z3ASTHandle here so have to do ref counting manually
+      ::Z3_ast arrayElementExpr;
+      Z3ErrorASTHandle initial_read = builder->getInitialRead(array, offset);
+
+      bool successfulEval =
+          Z3_model_eval(builder->ctx, theModel, initial_read,
+                        /*model_completion=*/Z3_TRUE, &arrayElementExpr);
+      assert(successfulEval && "Failed to evaluate model");
+      Z3_inc_ref(builder->ctx, arrayElementExpr);
+      assert(Z3_get_ast_kind(builder->ctx, arrayElementExpr) ==
+                 Z3_NUMERAL_AST &&
+             "Evaluated expression has wrong sort");
+
+      int arrayElementValue = 0;
+      bool successGet = Z3_get_numeral_int(builder->ctx, arrayElementExpr,
+                                           &arrayElementValue);
+      if (successGet) {
+        assert(arrayElementValue >= 0 && arrayElementValue <= 255 &&
+               "Integer from model is out of range");
+        data.push_back(arrayElementValue);
+      } else {
+        int numerator, denominator;
+        bool successNumerator = Z3_get_numeral_int(
+            builder->ctx, Z3_get_numerator(builder->ctx, arrayElementExpr),
+            &numerator);
+        bool successDenominator = Z3_get_numeral_int(
+            builder->ctx, Z3_get_denominator(builder->ctx, arrayElementExpr),
+            &denominator);
+
+        assert(successNumerator && successDenominator &&
+               "failed to get value back");
+        double result = ((double)numerator) / ((double)denominator);
+
+        uint64_t intResult = 0;
+        memcpy(&intResult, &result, 8);
+
+        for (int i = 0; i < 8; ++i) {
+          data.push_back(intResult & 255);
+          intResult = intResult >> 8;
+        }
+      }
+      Z3_dec_ref(builder->ctx, arrayElementExpr);
+
+      values->push_back(data);
+    }
+
+    Z3_model_dec_ref(builder->ctx, theModel);
+    return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE;
+  }
+  case Z3_L_FALSE:
+    hasSolution = false;
+    return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_UNSOLVABLE;
+  case Z3_L_UNDEF: {
+    ::Z3_string reason =
+        ::Z3_optimize_get_reason_unknown(builder->ctx, theSolver);
     if (strcmp(reason, "timeout") == 0 || strcmp(reason, "canceled") == 0) {
       return SolverImpl::SOLVER_RUN_STATUS_TIMEOUT;
     }
