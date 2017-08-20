@@ -351,9 +351,10 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
       bool successGet = Z3_get_numeral_int(builder->ctx, arrayElementExpr,
                                            &arrayElementValue);
       if (successGet) {
-        assert(arrayElementValue >= 0 && arrayElementValue <= 255 &&
-               "Integer from model is out of range");
-        data.push_back(arrayElementValue);
+        for (int i = 0; i < 8; ++i) {
+          data.push_back(arrayElementValue & 255);
+          arrayElementValue = arrayElementValue >> 8;
+        }
       } else {
         int numerator, denominator;
         bool successNumerator = Z3_get_numeral_int(
