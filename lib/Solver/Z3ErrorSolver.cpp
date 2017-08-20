@@ -421,8 +421,23 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
     for (unsigned idx = 0; idx < objects->size(); ++idx) {
       std::vector<unsigned char> data;
 
-      ::Z3_ast upperBound = Z3_optimize_get_upper(builder->ctx, theSolver, idx);
-      Z3_inc_ref(builder->ctx, upperBound);
+      ::Z3_ast_vector upperBoundVector =
+          Z3_optimize_get_upper_as_vector(builder->ctx, theSolver, idx);
+
+      Z3_ast_vector_inc_ref(builder->ctx, upperBoundVector);
+
+      ::Z3_ast infinityCoefficient =
+          Z3_ast_vector_get(builder->ctx, upperBoundVector, 0);
+      ::Z3_ast upperBound =
+          Z3_ast_vector_get(builder->ctx, upperBoundVector, 1);
+      ::Z3_ast epsilonCoefficient =
+          Z3_ast_vector_get(builder->ctx, upperBoundVector, 2);
+
+      llvm::errs() << Z3_ast_to_string(builder->ctx, infinityCoefficient)
+                   << "\n";
+      llvm::errs() << Z3_ast_to_string(builder->ctx, upperBound) << "\n";
+      llvm::errs() << Z3_ast_to_string(builder->ctx, epsilonCoefficient)
+                   << "\n";
 
       int upperBoundValue = 0;
       bool successGet =
