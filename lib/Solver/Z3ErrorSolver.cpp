@@ -34,6 +34,11 @@ private:
                          std::vector<std::vector<unsigned char> > *values,
                          bool &hasSolution);
 
+  bool internalRunOptimize(const Query &,
+                           const std::vector<const Array *> *objects,
+                           std::vector<std::vector<unsigned char> > *values,
+                           bool &hasSolution);
+
 public:
   Z3ErrorSolverImpl();
   ~Z3ErrorSolverImpl();
@@ -181,7 +186,7 @@ bool Z3ErrorSolverImpl::computeInitialValues(
 bool Z3ErrorSolverImpl::computeOptimalValues(
     const Query &query, const std::vector<const Array *> &objects,
     std::vector<std::vector<unsigned char> > &values, bool &hasSolution) {
-  return internalRunSolver(query, &objects, &values, hasSolution);
+  return internalRunOptimize(query, &objects, &values, hasSolution);
 }
 
 bool Z3ErrorSolverImpl::internalRunSolver(
@@ -224,6 +229,55 @@ bool Z3ErrorSolverImpl::internalRunSolver(
                                        hasSolution);
 
   Z3_solver_dec_ref(builder->ctx, theSolver);
+  // Clear the builder's cache to prevent memory usage exploding.
+  // By using ``autoClearConstructCache=false`` and clearning now
+  // we allow Z3_ast expressions to be shared from an entire
+  // ``Query`` rather than only sharing within a single call to
+  // ``builder->construct()``.
+  builder->clearConstructCache();
+
+  if (runStatusCode == SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE ||
+      runStatusCode == SolverImpl::SOLVER_RUN_STATUS_SUCCESS_UNSOLVABLE) {
+    if (hasSolution) {
+      ++stats::queriesInvalid;
+    } else {
+      ++stats::queriesValid;
+    }
+    return true; // success
+  }
+  return false; // failed
+}
+
+bool Z3ErrorSolverImpl::internalRunOptimize(
+    const Query &query, const std::vector<const Array *> *objects,
+    std::vector<std::vector<unsigned char> > *values, bool &hasSolution) {
+  TimerStatIncrementer t(stats::queryTime);
+  // TODO: Does making a new solver for each query have a performance
+  // impact vs making one global solver and using push and pop?
+  // TODO: is the "simple_solver" the right solver to use for
+  // best performance?
+  Z3_optimize theSolver = Z3_mk_optimize(builder->ctx);
+  Z3_optimize_inc_ref(builder->ctx, theSolver);
+  Z3_optimize_set_params(builder->ctx, theSolver, solverParameters);
+
+  runStatusCode = SOLVER_RUN_STATUS_FAILURE;
+
+  for (ConstraintManager::const_iterator it = query.constraints.begin(),
+                                         ie = query.constraints.end();
+       it != ie; ++it) {
+    Z3_optimize_assert(builder->ctx, theSolver, builder->construct(*it));
+  }
+  ++stats::queries;
+  if (objects)
+    ++stats::queryCounterexamples;
+
+  // Objective functions here
+
+  ::Z3_lbool satisfiable = Z3_optimize_check(builder->ctx, theSolver);
+  runStatusCode = handleOptimizeResponse(theSolver, satisfiable, objects,
+                                         values, hasSolution);
+
+  Z3_optimize_dec_ref(builder->ctx, theSolver);
   // Clear the builder's cache to prevent memory usage exploding.
   // By using ``autoClearConstructCache=false`` and clearning now
   // we allow Z3_ast expressions to be shared from an entire
