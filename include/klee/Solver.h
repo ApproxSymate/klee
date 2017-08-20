@@ -256,6 +256,12 @@ namespace klee {
     /// value; 0
     /// is off.
     virtual void setCoreSolverTimeout(double timeout);
+
+    /// computeOptimalValues - Compute optimal values of objects
+    bool computeOptimalValues(const Query &query,
+                              const std::vector<const Array *> &objects,
+                              std::vector<std::vector<unsigned char> > &values,
+                              bool &hasSolution);
   };
 #endif // ENABLE_Z3
 

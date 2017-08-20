@@ -456,7 +456,7 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
       Query query(cm, *it);
 
       findSymbolicObjects(query.expr, objects);
-      bool success = executor.errorSolver->impl->computeInitialValues(
+      bool success = executor.errorSolver->computeOptimalValues(
           query.withFalse(), objects, values, hasSolution);
 
       assert(success && hasSolution && "state has invalid constraint set");

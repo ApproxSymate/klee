@@ -89,6 +89,13 @@ void Z3ErrorSolver::setCoreSolverTimeout(double timeout) {
   impl->setCoreSolverTimeout(timeout);
 }
 
+bool Z3ErrorSolver::computeOptimalValues(
+    const Query &query, const std::vector<const Array *> &objects,
+    std::vector<std::vector<unsigned char> > &values, bool &hasSolution) {
+  Z3ErrorSolverImpl *solverImpl = (Z3ErrorSolverImpl *)impl;
+  return solverImpl->computeInitialValues(query, objects, values, hasSolution);
+}
+
 char *Z3ErrorSolverImpl::getConstraintLog(const Query &query) {
   std::vector<Z3ErrorASTHandle> assumptions;
   for (std::vector<ref<Expr> >::const_iterator it = query.constraints.begin(),
