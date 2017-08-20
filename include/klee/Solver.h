@@ -259,8 +259,9 @@ namespace klee {
     /// computeOptimalValues - Compute optimal values of objects
     bool computeOptimalValues(const Query &query,
                               const std::vector<const Array *> &objects,
-                              std::vector<std::vector<unsigned char> > &values,
-                              bool &hasSolution);
+                              std::vector<bool> &infinity,
+                              std::vector<double> &values,
+                              std::vector<bool> &epsilon, bool &hasSolution);
   };
 #endif // ENABLE_Z3
 

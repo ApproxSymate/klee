@@ -451,29 +451,23 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
                                                  ie = inputErrorList.end();
          it != ie; ++it) {
       std::vector<const Array *> objects;
-      std::vector<std::vector<unsigned char> > values;
+      std::vector<bool> infinity;
+      std::vector<double> values;
+      std::vector<bool> epsilon;
       bool hasSolution;
       Query query(cm, *it);
 
       findSymbolicObjects(query.expr, objects);
       bool success = executor.errorSolver->computeOptimalValues(
-          query.withFalse(), objects, values, hasSolution);
+          query.withFalse(), objects, infinity, values, epsilon, hasSolution);
 
       assert(success && hasSolution && "state has invalid constraint set");
 
-      uint64_t intResult = 0;
+      double result = values.back();
 
-      std::vector<unsigned char> &value = values.back();
-      for (std::vector<unsigned char>::const_reverse_iterator
-               it1 = value.rbegin(),
-               ie1 = value.rend();
-           it1 != ie1; ++it1) {
-        intResult = intResult << 8;
-        intResult = intResult | (*it1);
-      }
-
-      double result;
-      memcpy(&result, &intResult, 8);
+      llvm::errs() << "VALUE OF ";
+      (*it)->print(llvm::errs());
+      llvm::errs() << " = " << result << "\n";
     }
     return;
   }
