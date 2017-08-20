@@ -56,6 +56,10 @@ public:
                             const std::vector<const Array *> &objects,
                             std::vector<std::vector<unsigned char> > &values,
                             bool &hasSolution);
+  bool computeOptimalValues(const Query &,
+                            const std::vector<const Array *> &objects,
+                            std::vector<std::vector<unsigned char> > &values,
+                            bool &hasSolution);
   SolverRunStatus
   handleSolverResponse(::Z3_solver theSolver, ::Z3_lbool satisfiable,
                        const std::vector<const Array *> *objects,
@@ -93,7 +97,7 @@ bool Z3ErrorSolver::computeOptimalValues(
     const Query &query, const std::vector<const Array *> &objects,
     std::vector<std::vector<unsigned char> > &values, bool &hasSolution) {
   Z3ErrorSolverImpl *solverImpl = (Z3ErrorSolverImpl *)impl;
-  return solverImpl->computeInitialValues(query, objects, values, hasSolution);
+  return solverImpl->computeOptimalValues(query, objects, values, hasSolution);
 }
 
 char *Z3ErrorSolverImpl::getConstraintLog(const Query &query) {
@@ -164,6 +168,12 @@ bool Z3ErrorSolverImpl::computeValue(const Query &query, ref<Expr> &result) {
 }
 
 bool Z3ErrorSolverImpl::computeInitialValues(
+    const Query &query, const std::vector<const Array *> &objects,
+    std::vector<std::vector<unsigned char> > &values, bool &hasSolution) {
+  return internalRunSolver(query, &objects, &values, hasSolution);
+}
+
+bool Z3ErrorSolverImpl::computeOptimalValues(
     const Query &query, const std::vector<const Array *> &objects,
     std::vector<std::vector<unsigned char> > &values, bool &hasSolution) {
   return internalRunSolver(query, &objects, &values, hasSolution);
