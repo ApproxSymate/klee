@@ -272,6 +272,17 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
     ++stats::queryCounterexamples;
 
   // Objective functions here
+  for (std::vector<const Array *>::const_iterator it = objects->begin(),
+                                                  ie = objects->end();
+       it != ie; ++it) {
+    const Array *array = *it;
+
+    unsigned offset = 0;
+
+    Z3ErrorASTHandle initial_read = builder->getInitialRead(array, offset);
+
+    Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
+  }
 
   ::Z3_lbool satisfiable = Z3_optimize_check(builder->ctx, theSolver);
   runStatusCode = handleOptimizeResponse(theSolver, satisfiable, objects,
@@ -405,46 +416,28 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
       return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE;
     }
     assert(values && "values cannot be nullptr");
-    ::Z3_model theModel = Z3_optimize_get_model(builder->ctx, theSolver);
-    assert(theModel && "Failed to retrieve model");
-    Z3_model_inc_ref(builder->ctx, theModel);
     values->reserve(objects->size());
-    for (std::vector<const Array *>::const_iterator it = objects->begin(),
-                                                    ie = objects->end();
-         it != ie; ++it) {
-      const Array *array = *it;
+
+    for (unsigned idx = 0; idx < objects->size(); ++idx) {
       std::vector<unsigned char> data;
 
-      data.reserve(8);
-      unsigned offset = 0;
+      ::Z3_ast upperBound = Z3_optimize_get_upper(builder->ctx, theSolver, idx);
+      Z3_inc_ref(builder->ctx, upperBound);
 
-      // We can't use Z3ASTHandle here so have to do ref counting manually
-      ::Z3_ast arrayElementExpr;
-      Z3ErrorASTHandle initial_read = builder->getInitialRead(array, offset);
-
-      bool successfulEval =
-          Z3_model_eval(builder->ctx, theModel, initial_read,
-                        /*model_completion=*/Z3_TRUE, &arrayElementExpr);
-      assert(successfulEval && "Failed to evaluate model");
-      Z3_inc_ref(builder->ctx, arrayElementExpr);
-      assert(Z3_get_ast_kind(builder->ctx, arrayElementExpr) ==
-                 Z3_NUMERAL_AST &&
-             "Evaluated expression has wrong sort");
-
-      int arrayElementValue = 0;
-      bool successGet = Z3_get_numeral_int(builder->ctx, arrayElementExpr,
-                                           &arrayElementValue);
+      int upperBoundValue = 0;
+      bool successGet =
+          Z3_get_numeral_int(builder->ctx, upperBound, &upperBoundValue);
       if (successGet) {
-        assert(arrayElementValue >= 0 && arrayElementValue <= 255 &&
+        assert(upperBoundValue >= 0 && upperBoundValue <= 255 &&
                "Integer from model is out of range");
-        data.push_back(arrayElementValue);
+        data.push_back(upperBoundValue);
       } else {
         int numerator, denominator;
         bool successNumerator = Z3_get_numeral_int(
-            builder->ctx, Z3_get_numerator(builder->ctx, arrayElementExpr),
+            builder->ctx, Z3_get_numerator(builder->ctx, upperBound),
             &numerator);
         bool successDenominator = Z3_get_numeral_int(
-            builder->ctx, Z3_get_denominator(builder->ctx, arrayElementExpr),
+            builder->ctx, Z3_get_denominator(builder->ctx, upperBound),
             &denominator);
 
         assert(successNumerator && successDenominator &&
@@ -459,12 +452,10 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
           intResult = intResult >> 8;
         }
       }
-      Z3_dec_ref(builder->ctx, arrayElementExpr);
+      Z3_dec_ref(builder->ctx, upperBound);
 
       values->push_back(data);
     }
-
-    Z3_model_dec_ref(builder->ctx, theModel);
     return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE;
   }
   case Z3_L_FALSE:
