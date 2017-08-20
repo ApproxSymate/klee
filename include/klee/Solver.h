@@ -253,8 +253,7 @@ namespace klee {
     virtual char *getConstraintLog(const Query &);
 
     /// setCoreSolverTimeout - Set constraint solver timeout delay to the given
-    /// value; 0
-    /// is off.
+    /// value; 0 is off.
     virtual void setCoreSolverTimeout(double timeout);
 
     /// computeOptimalValues - Compute optimal values of objects
