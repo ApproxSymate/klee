@@ -130,7 +130,7 @@ private:
 
   ExternalDispatcher *externalDispatcher;
   TimingSolver *solver;
-  Solver *errorSolver;
+  Z3ErrorSolver *errorSolver;
   MemoryManager *memory;
   std::set<ExecutionState*> states;
   StatsTracker *statsTracker;

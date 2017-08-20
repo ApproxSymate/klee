@@ -337,7 +337,7 @@ namespace klee {
   Solver *createCoreSolver(CoreSolverType cst);
 
   // Create a solver for error expression reasoning
-  Solver *createCoreErrorSolver();
+  Z3ErrorSolver *createCoreErrorSolver();
 }
 
 #endif

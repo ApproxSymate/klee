@@ -98,7 +98,7 @@ Solver *createCoreSolver(CoreSolverType cst) {
   }
 }
 
-Solver *createCoreErrorSolver() {
+Z3ErrorSolver *createCoreErrorSolver() {
 #ifdef ENABLE_Z3
   klee_message("Using Z3 for reasoning about error expressions");
   return new Z3ErrorSolver();
