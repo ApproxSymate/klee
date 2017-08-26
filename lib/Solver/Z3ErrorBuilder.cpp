@@ -13,6 +13,7 @@
 #include "klee/Expr.h"
 #include "klee/Solver.h"
 #include "klee/util/Bits.h"
+#include "klee/util/PrettyExpressionBuilder.h"
 #include "ConstantDivision.h"
 
 #include "llvm/ADT/StringExtras.h"
@@ -345,7 +346,41 @@ Z3ErrorASTHandle Z3ErrorBuilder::constructActual(ref<Expr> e) {
   case Expr::Read: {
     ReadExpr *re = cast<ReadExpr>(e);
     assert(re && re->updates.root);
-    return buildReal(re->updates.root->name.c_str());
+
+    std::string name(re->updates.root->name);
+
+    if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(re->index)) {
+      uint64_t index = ce->getZExtValue();
+      const std::string array_prefix8 = ARRAY_PREFIX8;
+      const std::string array_prefix16 = ARRAY_PREFIX16;
+      const std::string array_prefix32 = ARRAY_PREFIX32;
+      const std::string array_prefix64 = ARRAY_PREFIX64;
+
+      if (!name.compare(0, array_prefix8.size(), array_prefix8)) {
+        std::ostringstream so;
+        so << index;
+        name.erase(0, 8);
+        name += "__index__" + so.str();
+      } else if (!name.compare(0, array_prefix16.size(), array_prefix16)) {
+        std::ostringstream so;
+        so << index / 2;
+        name.erase(0, 9);
+        name += "__index__" + so.str();
+      } else if (!name.compare(0, array_prefix32.size(), array_prefix32)) {
+        std::ostringstream so;
+        so << index / 4;
+        name.erase(0, 9);
+        name += "__index__" + so.str();
+      } else if (!name.compare(0, array_prefix64.size(), array_prefix64)) {
+        std::ostringstream so;
+        so << index / 8;
+        name.erase(0, 9);
+        name += "__index__" + so.str();
+      }
+      return buildReal(name.c_str());
+    }
+    return readExpr(getArrayForUpdate(re->updates.root, re->updates.head),
+                    constructInternal(re->index));
   }
 
   case Expr::Select: {
