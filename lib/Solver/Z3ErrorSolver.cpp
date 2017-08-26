@@ -284,10 +284,7 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
                                                   ie = objects->end();
        it != ie; ++it) {
     const Array *array = *it;
-
-    unsigned offset = 0;
-
-    Z3ErrorASTHandle initial_read = builder->getInitialRead(array, offset);
+    Z3ErrorASTHandle initial_read = builder->buildReal(array->name.c_str());
 
     Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
   }

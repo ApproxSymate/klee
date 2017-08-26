@@ -101,6 +101,11 @@ Z3ErrorASTHandle Z3ErrorBuilder::buildArray(const char *name) {
   return Z3ErrorASTHandle(Z3_mk_const(ctx, s, t), ctx);
 }
 
+Z3ErrorASTHandle Z3ErrorBuilder::buildReal(const char *name) {
+  Z3_symbol s = Z3_mk_string_symbol(ctx, const_cast<char *>(name));
+  return Z3ErrorASTHandle(Z3_mk_const(ctx, s, getRealSort()), ctx);
+}
+
 Z3ErrorASTHandle Z3ErrorBuilder::getTrue() {
   return Z3ErrorASTHandle(Z3_mk_true(ctx), ctx);
 }
@@ -340,8 +345,7 @@ Z3ErrorASTHandle Z3ErrorBuilder::constructActual(ref<Expr> e) {
   case Expr::Read: {
     ReadExpr *re = cast<ReadExpr>(e);
     assert(re && re->updates.root);
-    return readExpr(getArrayForUpdate(re->updates.root, re->updates.head),
-                    constructInternal(re->index));
+    return buildReal(re->updates.root->name.c_str());
   }
 
   case Expr::Select: {

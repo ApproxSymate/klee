@@ -172,6 +172,7 @@ public:
   Z3ErrorASTHandle getTrue();
   Z3ErrorASTHandle getFalse();
   Z3ErrorASTHandle getInitialRead(const Array *os, unsigned index);
+  Z3ErrorASTHandle buildReal(const char *name);
 
   Z3ErrorASTHandle construct(ref<Expr> e) {
     Z3ErrorASTHandle res = constructInternal(e);
