@@ -28,11 +28,6 @@ using namespace klee;
 
 namespace klee {
 
-const std::string array_prefix8 = "__arr8__";
-const std::string array_prefix16 = "__arr16__";
-const std::string array_prefix32 = "__arr32__";
-const std::string array_prefix64 = "__arr64__";
-
 bool outputFunctionName(llvm::Value *value, llvm::raw_ostream &stream) {
   llvm::Instruction *inst = llvm::dyn_cast<llvm::Instruction>(value);
   if (inst) {
@@ -178,6 +173,11 @@ std::string PrettyExpressionBuilder::writeExpr(std::string array,
 std::string PrettyExpressionBuilder::readExpr(std::string array,
                                               std::string index) {
   int array_index;
+  const std::string array_prefix8 = ARRAY_PREFIX8;
+  const std::string array_prefix16 = ARRAY_PREFIX16;
+  const std::string array_prefix32 = ARRAY_PREFIX32;
+  const std::string array_prefix64 = ARRAY_PREFIX64;
+
   if (!array.compare(0, array_prefix8.size(), array_prefix8)) {
     std::istringstream ss(index);
     ss >> array_index;

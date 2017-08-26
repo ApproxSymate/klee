@@ -27,10 +27,10 @@
 
 #include <string>
 
-extern const std::string array_prefix8;
-extern const std::string array_prefix16;
-extern const std::string array_prefix32;
-extern const std::string array_prefix64;
+#define ARRAY_PREFIX8 "__arr8__";
+#define ARRAY_PREFIX16 "__arr16__";
+#define ARRAY_PREFIX32 "__arr32__";
+#define ARRAY_PREFIX64 "__arr64__";
 
 namespace klee {
 
