@@ -440,12 +440,6 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
       ::Z3_ast epsilonCoefficient =
           Z3_ast_vector_get(builder->ctx, upperBoundVector, 2);
 
-      llvm::errs() << Z3_ast_to_string(builder->ctx, infinityCoefficient)
-                   << "\n";
-      llvm::errs() << Z3_ast_to_string(builder->ctx, upperBound) << "\n";
-      llvm::errs() << Z3_ast_to_string(builder->ctx, epsilonCoefficient)
-                   << "\n";
-
       int upperBoundValue = 0;
       double result;
 

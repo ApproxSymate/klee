@@ -447,27 +447,29 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
     ConstraintManager cm = state.symbolicError->outputErrorBound(
         target->inst, bound, inputErrorList);
 
+    std::vector<const Array *> objects;
     for (std::vector<ref<Expr> >::const_iterator it = inputErrorList.begin(),
                                                  ie = inputErrorList.end();
          it != ie; ++it) {
-      std::vector<const Array *> objects;
-      std::vector<bool> infinity;
-      std::vector<double> values;
-      std::vector<bool> epsilon;
-      bool hasSolution;
-      Query query(cm, *it);
+      std::vector<const Array *> addedObjects;
+      findSymbolicObjects(*it, addedObjects);
+      objects.push_back(addedObjects.back());
+    }
 
-      findSymbolicObjects(query.expr, objects);
-      bool success = executor.errorSolver->computeOptimalValues(
-          query.withFalse(), objects, infinity, values, epsilon, hasSolution);
+    std::vector<bool> infinity;
+    std::vector<double> values;
+    std::vector<bool> epsilon;
+    bool hasSolution;
+    Query queryWithFalse(cm, ConstantExpr::create(0, Expr::Bool));
+    bool success = executor.errorSolver->computeOptimalValues(
+        queryWithFalse, objects, infinity, values, epsilon, hasSolution);
 
-      assert(success && hasSolution && "state has invalid constraint set");
+    assert(success && hasSolution && "state has invalid constraint set");
 
-      double result = values.back();
-
+    for (unsigned i = 0; i < inputErrorList.size(); ++i) {
       llvm::errs() << "VALUE OF ";
-      (*it)->print(llvm::errs());
-      llvm::errs() << " = " << result << "\n";
+      inputErrorList.at(i)->print(llvm::errs());
+      llvm::errs() << " = " << values.at(i) << "\n";
     }
     return;
   }
