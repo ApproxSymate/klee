@@ -465,12 +465,6 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
         queryWithFalse, objects, infinity, values, epsilon, hasSolution);
 
     assert(success && hasSolution && "state has invalid constraint set");
-
-    for (unsigned i = 0; i < inputErrorList.size(); ++i) {
-      llvm::errs() << "VALUE OF ";
-      inputErrorList.at(i)->print(llvm::errs());
-      llvm::errs() << " = " << values.at(i) << "\n";
-    }
     return;
   }
 
