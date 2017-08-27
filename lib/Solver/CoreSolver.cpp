@@ -100,10 +100,13 @@ Solver *createCoreSolver(CoreSolverType cst) {
 
 Z3ErrorSolver *createCoreErrorSolver() {
 #ifdef ENABLE_Z3
-  klee_message("Using Z3 for reasoning about error expressions");
-  return new Z3ErrorSolver();
+  if (ComputeErrorBound) {
+    klee_message("Using Z3 for reasoning about error expressions");
+    return new Z3ErrorSolver();
+  }
+  return NULL;
 #else
-  return NULL
+  return NULL;
 #endif
 }
 }

@@ -59,6 +59,8 @@ extern llvm::cl::opt<CoreSolverType> DebugCrossCheckCoreSolverWith;
 
 extern llvm::cl::opt<bool> PrecisionError;
 
+extern llvm::cl::opt<bool> ComputeErrorBound;
+
 extern llvm::cl::opt<bool> DebugPrecision;
 
 extern llvm::cl::opt<bool> LoopBreaking;

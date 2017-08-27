@@ -87,6 +87,11 @@ PrecisionError("precision",
                llvm::cl::desc("Switch on numerical precision analysis"),
                llvm::cl::init(false));
 
+llvm::cl::opt<bool>
+ComputeErrorBound("compute-error-bound",
+                  llvm::cl::desc("Compute precision error bound"),
+                  llvm::cl::init(false));
+
 llvm::cl::opt<bool> DebugPrecision(
     "debug-precision",
     llvm::cl::desc("Output debugging trace for numerical precision analysis"),

@@ -447,24 +447,26 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
     ConstraintManager cm = state.symbolicError->outputErrorBound(
         target->inst, bound, inputErrorList);
 
-    std::vector<const Array *> objects;
-    for (std::vector<ref<Expr> >::const_iterator it = inputErrorList.begin(),
-                                                 ie = inputErrorList.end();
-         it != ie; ++it) {
-      std::vector<const Array *> addedObjects;
-      findSymbolicObjects(*it, addedObjects);
-      objects.push_back(addedObjects.back());
+    if (ComputeErrorBound) {
+      std::vector<const Array *> objects;
+      for (std::vector<ref<Expr> >::const_iterator it = inputErrorList.begin(),
+                                                   ie = inputErrorList.end();
+           it != ie; ++it) {
+        std::vector<const Array *> addedObjects;
+        findSymbolicObjects(*it, addedObjects);
+        objects.push_back(addedObjects.back());
+      }
+
+      std::vector<bool> infinity;
+      std::vector<double> values;
+      std::vector<bool> epsilon;
+      bool hasSolution;
+      Query queryWithFalse(cm, ConstantExpr::create(0, Expr::Bool));
+      bool success = executor.errorSolver->computeOptimalValues(
+          queryWithFalse, objects, infinity, values, epsilon, hasSolution);
+
+      assert(success && hasSolution && "state has invalid constraint set");
     }
-
-    std::vector<bool> infinity;
-    std::vector<double> values;
-    std::vector<bool> epsilon;
-    bool hasSolution;
-    Query queryWithFalse(cm, ConstantExpr::create(0, Expr::Bool));
-    bool success = executor.errorSolver->computeOptimalValues(
-        queryWithFalse, objects, infinity, values, epsilon, hasSolution);
-
-    assert(success && hasSolution && "state has invalid constraint set");
     return;
   }
 
