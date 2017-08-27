@@ -307,6 +307,8 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       if (ReadExpr *re = llvm::dyn_cast<ReadExpr>(baseError)) {
         if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
 
+          deregisterInputError(baseError);
+
           uint64_t array_index = ce->getZExtValue();
           const std::string array_prefix8 = ARRAY_PREFIX8;
           const std::string array_prefix16 = ARRAY_PREFIX16;
@@ -405,6 +407,13 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
   default: { assert(!"unhandled instruction"); }
   }
   return ConstantExpr::create(0, Expr::Int8);
+}
+
+void ErrorState::deregisterInputError(ref<Expr> error) {
+  std::vector<ref<Expr> >::iterator it =
+      std::find(inputErrorList.begin(), inputErrorList.end(), error);
+  if (it != inputErrorList.end())
+    inputErrorList.erase(it);
 }
 
 void ErrorState::executeStoreSimple(llvm::Instruction *inst, ref<Expr> address,
