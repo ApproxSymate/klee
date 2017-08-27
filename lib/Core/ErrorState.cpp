@@ -349,6 +349,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
           UpdateList ul(newErrorArray, 0);
 
           ref<Expr> newError = ReadExpr::create(ul, offset);
+          registerInputError(newError);
           executeStoreSimple(instr, result, newError);
         }
       }
