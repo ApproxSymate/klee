@@ -300,16 +300,57 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
 
     if (!hasStoredError(result)) {
       ref<Expr> baseError = retrieveStoredError(arguments[0].value);
+      ref<Expr> offset = SubExpr::create(result, arguments[0].value);
+
       // The following also performs nullity check on the result of the cast. If
       // the type does not match, re is NULL
       if (ReadExpr *re = llvm::dyn_cast<ReadExpr>(baseError)) {
-        std::string errorName = re->updates.root->name;
-        const Array *newErrorArray =
-            errorArrayCache.CreateArray(errorName, Expr::Int8);
-        UpdateList ul(newErrorArray, 0);
-        ref<Expr> offset = SubExpr::create(result, arguments[0].value);
-        ref<Expr> newError = ReadExpr::create(ul, offset);
-        executeStoreSimple(instr, result, newError);
+        if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
+
+          uint64_t array_index = ce->getZExtValue();
+          const std::string array_prefix8 = ARRAY_PREFIX8;
+          const std::string array_prefix16 = ARRAY_PREFIX16;
+          const std::string array_prefix32 = ARRAY_PREFIX32;
+          const std::string array_prefix64 = ARRAY_PREFIX64;
+
+          std::string errorName = re->updates.root->name;
+
+          if (!errorName.compare(0, array_prefix8.size(), array_prefix8)) {
+            std::ostringstream so;
+            so << array_index;
+            errorName.erase(0, 8);
+            errorName += "__index__" + so.str();
+            offset = Expr::createPointer(0);
+          } else if (!errorName.compare(0, array_prefix16.size(),
+                                        array_prefix16)) {
+            std::ostringstream so;
+            so << array_index / 2;
+            errorName.erase(0, 9);
+            errorName += "__index__" + so.str();
+            offset = Expr::createPointer(0);
+          } else if (!errorName.compare(0, array_prefix32.size(),
+                                        array_prefix32)) {
+            std::ostringstream so;
+            so << array_index / 4;
+            errorName.erase(0, 9);
+            errorName += "__index__" + so.str();
+            offset = Expr::createPointer(0);
+          } else if (!errorName.compare(0, array_prefix64.size(),
+                                        array_prefix64)) {
+            std::ostringstream so;
+            so << array_index / 8;
+            errorName.erase(0, 9);
+            errorName += "__index__" + so.str();
+            offset = Expr::createPointer(0);
+          }
+
+          const Array *newErrorArray =
+              errorArrayCache.CreateArray(errorName, Expr::Int8);
+          UpdateList ul(newErrorArray, 0);
+
+          ref<Expr> newError = ReadExpr::create(ul, offset);
+          executeStoreSimple(instr, result, newError);
+        }
       }
     }
     return error;
