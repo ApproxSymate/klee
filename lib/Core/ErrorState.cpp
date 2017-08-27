@@ -87,6 +87,19 @@ ref<Expr> ErrorState::getError(Executor *executor, ref<Expr> valueExpr,
 
 ErrorState::~ErrorState() {}
 
+void ErrorState::outputComputedErrorBound(std::vector<double> bounds) {
+  llvm::raw_string_ostream stream(outputString);
+
+  uint64_t size = inputErrorList.size();
+  for (unsigned i = 0; i < size; ++i) {
+    stream << "Error Bound for ";
+    stream << PrettyExpressionBuilder::construct(inputErrorList.at(i));
+    stream << " is " << bounds.at(i) << "\n";
+  }
+
+  stream.flush();
+}
+
 ConstraintManager
 ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
                              double bound,

@@ -466,6 +466,9 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
           queryWithFalse, objects, infinity, values, epsilon, hasSolution);
 
       assert(success && hasSolution && "state has invalid constraint set");
+
+      // Output the computed error bounds
+      state.symbolicError->outputComputedErrorBound(values);
     }
     return;
   }
