@@ -466,12 +466,10 @@ ref<Expr> ErrorState::retrieveStoredError(ref<Expr> address) const {
     if (it != storedError.end()) {
       error = it->second;
     }
-  } else {
-    // it is possible that the address is non-constant
-    // in that case assume the error to be zero
-    // assert(!"non-constant address");
-    error = ConstantExpr::create(0, Expr::Int8);
   }
+
+  // It is possible that the address is non-constant in that case assume the
+  // error to be zero assert(!"non-constant address");
   return error;
 }
 
