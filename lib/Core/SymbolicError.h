@@ -135,8 +135,9 @@ public:
     errorState->declareInputError(address, error);
   }
 
-  ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address) {
-    return errorState->executeLoad(value, address);
+  ref<Expr> executeLoad(llvm::Value *addressValue, ref<Expr> base,
+                        ref<Expr> address, ref<Expr> offset) {
+    return errorState->executeLoad(addressValue, base, address, offset);
   }
 
   void setKleeBoundErrorExpr(ref<Expr> error) { kleeBoundErrorExpr = error; }

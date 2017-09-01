@@ -76,9 +76,12 @@ public:
 
   ref<Expr> retrieveStoredError(ref<Expr> address) const;
 
+  ref<Expr> retrieveDeclaredInputError(ref<Expr> address) const;
+
   bool hasStoredError(ref<Expr> address) const;
 
-  ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address);
+  ref<Expr> executeLoad(llvm::Value *value, ref<Expr> base, ref<Expr> address,
+                        ref<Expr> offset);
 
   /// \brief Overwrite the contents of the current error state with another
   void overwriteWith(ref<ErrorState> overwriting);
