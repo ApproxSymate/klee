@@ -128,7 +128,7 @@ public:
     errorState->registerInputError(error);
   }
 
-  void storeError(llvm::Instruction *inst, ref<Expr> address, ref<Expr> error) {
+  void storeError(ref<Expr> address, ref<Expr> error) {
     errorState->executeStoreSimple(address, error);
   }
 
