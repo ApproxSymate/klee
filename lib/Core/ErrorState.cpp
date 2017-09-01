@@ -365,7 +365,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
 
           ref<Expr> newError = ReadExpr::create(ul, offset);
           registerInputError(newError);
-          executeStoreSimple(instr, result, newError);
+          executeStoreSimple(result, newError);
         }
       }
     }
@@ -429,8 +429,7 @@ void ErrorState::deregisterInputError(ref<Expr> error) {
     inputErrorList.erase(it);
 }
 
-void ErrorState::executeStoreSimple(llvm::Instruction *inst, ref<Expr> address,
-                                    ref<Expr> error) {
+void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error) {
   if (error.isNull())
     return;
 

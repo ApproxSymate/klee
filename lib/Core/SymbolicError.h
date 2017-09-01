@@ -129,7 +129,7 @@ public:
   }
 
   void storeError(llvm::Instruction *inst, ref<Expr> address, ref<Expr> error) {
-    errorState->executeStoreSimple(inst, address, error);
+    errorState->executeStoreSimple(address, error);
   }
 
   ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address) {

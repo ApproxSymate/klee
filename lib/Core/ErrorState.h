@@ -67,8 +67,7 @@ public:
 
   void registerInputError(ref<Expr> error) { inputErrorList.push_back(error); }
 
-  void executeStoreSimple(llvm::Instruction *inst, ref<Expr> address,
-                          ref<Expr> error);
+  void executeStoreSimple(ref<Expr> address, ref<Expr> error);
 
   ref<Expr> retrieveStoredError(ref<Expr> address) const;
 
