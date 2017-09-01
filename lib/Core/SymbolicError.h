@@ -121,8 +121,7 @@ public:
 
   std::string &getOutputString() { return errorState->getOutputString(); }
 
-  void executeStore(llvm::Instruction *inst, ref<Expr> address, ref<Expr> value,
-                    ref<Expr> error);
+  void executeStore(ref<Expr> address, ref<Expr> value, ref<Expr> error);
 
   void registerInputError(ref<Expr> error) {
     errorState->registerInputError(error);

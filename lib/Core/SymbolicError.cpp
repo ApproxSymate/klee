@@ -246,8 +246,8 @@ SymbolicError::~SymbolicError() {
   nonExited.clear();
 }
 
-void SymbolicError::executeStore(llvm::Instruction *inst, ref<Expr> address,
-                                 ref<Expr> value, ref<Expr> error) {
+void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
+                                 ref<Expr> error) {
     if (LoopBreaking && !writesStack.empty()) {
       // Record the error at each store at each iteration.
       if (llvm::isa<ConstantExpr>(address)) {
