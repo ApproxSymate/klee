@@ -38,6 +38,8 @@ private:
 
   std::string outputString;
 
+  std::map<uintptr_t, ref<Expr> > declaredInputError;
+
   std::map<uintptr_t, ref<Expr> > storedError;
 
   std::vector<ref<Expr> > inputErrorList;
@@ -46,6 +48,7 @@ public:
   ErrorState() : refCount(0) {}
 
   ErrorState(ErrorState &errorState) : refCount(0) {
+    declaredInputError = errorState.declaredInputError;
     storedError = errorState.storedError;
     inputErrorList = errorState.inputErrorList;
   }
@@ -68,6 +71,8 @@ public:
   void registerInputError(ref<Expr> error) { inputErrorList.push_back(error); }
 
   void executeStoreSimple(ref<Expr> address, ref<Expr> error);
+
+  void declareInputError(ref<Expr> address, ref<Expr> error);
 
   ref<Expr> retrieveStoredError(ref<Expr> address) const;
 

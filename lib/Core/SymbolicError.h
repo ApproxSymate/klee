@@ -131,6 +131,10 @@ public:
     errorState->executeStoreSimple(address, error);
   }
 
+  void declareInputError(ref<Expr> address, ref<Expr> error) {
+    errorState->declareInputError(address, error);
+  }
+
   ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address) {
     return errorState->executeLoad(value, address);
   }

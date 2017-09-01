@@ -4344,8 +4344,7 @@ void Executor::executeStoreError(ExecutionState &state, const uintptr_t address,
       UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
   ref<Expr> addressExpr = Expr::createPointer(address);
 
-  state.symbolicError->registerInputError(errorExpr);
-  state.symbolicError->storeError(addressExpr, errorExpr);
+  state.symbolicError->declareInputError(addressExpr, errorExpr);
 }
 
 // store the error amount of a memory object at a given address
