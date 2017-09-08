@@ -206,6 +206,134 @@ std::string PrettyExpressionBuilder::readExpr(std::string array,
     so << array_index;
     return array.erase(0, 9) + "[" + so.str() + "]";
   } else {
+    // We try to recognize suffix '__index__nnn' for nnn some number
+    const char *str = array.c_str();
+    int state = 0;
+    const char *index_start_index = 0;
+    const char *num_index = 0;
+    char c;
+
+    while (*str) {
+      c = *str;
+      switch (c) {
+      case '_': {
+        switch (state) {
+        case 0:
+          index_start_index = str;
+          state = 1;
+          break;
+        case 1:
+          state = 2;
+          break;
+        case 7:
+          state = 8;
+          break;
+        case 8:
+          state = 9;
+          break;
+        default:
+          state = 0;
+          break;
+        }
+        break;
+      }
+      case 'i': {
+        switch (state) {
+        case 2:
+          state = 3;
+          break;
+        default:
+          state = 0;
+          break;
+        }
+        break;
+      }
+      case 'n': {
+        switch (state) {
+        case 3:
+          state = 4;
+          break;
+        default:
+          state = 0;
+          break;
+        }
+        break;
+      }
+      case 'd': {
+        switch (state) {
+        case 4:
+          state = 5;
+          break;
+        default:
+          state = 0;
+          break;
+        }
+        break;
+      }
+      case 'e': {
+        switch (state) {
+        case 5:
+          state = 6;
+          break;
+        default:
+          state = 0;
+          break;
+        }
+        break;
+      }
+      case 'x': {
+        switch (state) {
+        case 6:
+          state = 7;
+          break;
+        default:
+          state = 0;
+          break;
+        }
+        break;
+      }
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9': {
+        switch (state) {
+        case 9:
+          num_index = str;
+          state = 10;
+          break;
+        case 10:
+          break;
+        default:
+          state = 0;
+          break;
+        }
+        break;
+      }
+      default:
+        break;
+      }
+
+      str++;
+    }
+
+    if (state == 10 && num_index) {
+      // We found '__index__nnn' for nnn some number
+      std::string number(num_index);
+      const char *str1 = array.c_str();
+      std::ostringstream so;
+      while (str1 != index_start_index) {
+        so << *str1;
+        str1++;
+      }
+      so << "[" << number << "]";
+      return so.str();
+    }
     return array;
   }
 }
