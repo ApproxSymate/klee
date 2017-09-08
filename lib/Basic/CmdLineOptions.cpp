@@ -95,8 +95,7 @@ llvm::cl::opt<bool> DebugPrecision(
 llvm::cl::opt<ErrorBoundComputationDomain> ComputeErrorBound(
     "compute-error-bound", llvm::cl::desc("Compute precision error bound"),
     llvm::cl::values(clEnumValN(VIA_REAL, "real", "Using real number domain"),
-                     clEnumValN(VIA_INTEGER, "integer",
-                                "Using integer domain (not implemented)"),
+                     clEnumValN(VIA_INTEGER, "integer", "Using integer domain"),
                      clEnumValN(NO_COMPUTATION, "none",
                                 "Do not compute error bound (default)"),
                      clEnumValEnd),
