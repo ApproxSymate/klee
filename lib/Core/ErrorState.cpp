@@ -34,13 +34,6 @@ ref<Expr> ErrorState::getError(Executor *executor, ref<Expr> valueExpr,
                                llvm::Value *value) {
   ref<Expr> ret = ConstantExpr::create(0, Expr::Int8);
 
-  if (value) {
-    ref<Expr> errorAmount = valueErrorMap[value];
-
-    if (!errorAmount.isNull())
-      return errorAmount;
-  }
-
   if (ConcatExpr *concatExpr = llvm::dyn_cast<ConcatExpr>(valueExpr)) {
     const Array *concatArray =
         llvm::dyn_cast<ReadExpr>(concatExpr->getLeft())->updates.root;
@@ -89,22 +82,13 @@ ref<Expr> ErrorState::getError(Executor *executor, ref<Expr> valueExpr,
       ret = AddExpr::create(getError(executor, valueExpr->getKid(i)), ret);
     }
   }
-
-  if (value) {
-    valueErrorMap[value] = ret;
-  }
   return ret;
 }
 
 ErrorState::~ErrorState() {}
 
-void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
-  ref<Expr> e =
-      valueErrorMap[llvm::dyn_cast<llvm::Instruction>(inst->getOperand(0))];
-  if (e.isNull()) {
-    e = ConstantExpr::create(0, Expr::Int8);
-  }
-
+void ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
+                                  double bound) {
   llvm::raw_string_ostream stream(outputString);
   if (!outputString.empty()) {
     stream << "\n------------------------\n";
@@ -128,7 +112,7 @@ void ErrorState::outputErrorBound(llvm::Instruction *inst, double bound) {
   }
 
   stream << "\nOutput Error: ";
-  stream << PrettyExpressionBuilder::construct(e);
+  stream << PrettyExpressionBuilder::construct(error);
   stream << "\nAbsolute Bound: " << bound << "\n";
   stream.flush();
 }
@@ -137,28 +121,11 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
                                      llvm::Instruction *instr, ref<Expr> result,
                                      std::vector<Cell> &arguments) {
   switch (instr->getOpcode()) {
-  case llvm::Instruction::PHI: {
-    ref<Expr> error = arguments.at(0).error;
-    valueErrorMap[instr] = error;
-    return error;
-  }
+  case llvm::Instruction::PHI: { return arguments.at(0).error; }
   case llvm::Instruction::Call:
   case llvm::Instruction::Invoke: {
-    ref<Expr> dummyError = ConstantExpr::create(0, Expr::Int8);
-    if (llvm::CallInst *ci = llvm::dyn_cast<llvm::CallInst>(instr)) {
-      if (llvm::Function *callee = ci->getCalledFunction()) {
-        llvm::Function::ArgumentListType &argList = callee->getArgumentList();
-        unsigned i = 0;
-        for (llvm::Function::ArgumentListType::iterator it1 = argList.begin(),
-                                                        ie1 = argList.end();
-             it1 != ie1; ++it1) {
-          llvm::Value *formalOp = &(*it1);
-          valueErrorMap[formalOp] = arguments.at(i).error;
-          ++i;
-        }
-      }
-    }
-    return dummyError;
+    // Return a dummy error
+    return ConstantExpr::create(0, Expr::Int8);
   }
   case llvm::Instruction::FAdd:
   case llvm::Instruction::Add: {
@@ -191,7 +158,6 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     result = ExtractExpr::create(
         result->isZero() ? result : UDivExpr::create(resultError, result), 0,
         Expr::Int8);
-    valueErrorMap[instr] = result;
     return result;
   }
   case llvm::Instruction::FSub:
@@ -227,7 +193,6 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     result = ExtractExpr::create(
         result->isZero() ? result : UDivExpr::create(resultError, result), 0,
         Expr::Int8);
-    valueErrorMap[instr] = result;
     return result;
   }
   case llvm::Instruction::FMul:
@@ -247,18 +212,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       rError = getError(executor, rValue, rOp);
     }
 
-    ref<Expr> extendedLeft = lError;
-    if (lError->getWidth() != lValue->getWidth()) {
-      extendedLeft = ZExtExpr::create(lError, lValue->getWidth());
-    }
-    ref<Expr> extendedRight = rError;
-    if (rError->getWidth() != rValue->getWidth()) {
-      extendedRight = ZExtExpr::create(rError, rValue->getWidth());
-    }
-
-    result = ExtractExpr::create(AddExpr::create(extendedLeft, extendedRight),
-                                 0, Expr::Int8);
-    valueErrorMap[instr] = result;
+    result = AddExpr::create(lError, rError);
     return result;
   }
   case llvm::Instruction::FDiv:
@@ -278,18 +232,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       rError = getError(executor, rValue, rOp);
     }
 
-    ref<Expr> extendedLeft = lError;
-    if (lError->getWidth() != lValue->getWidth()) {
-      extendedLeft = ZExtExpr::create(lError, lValue->getWidth());
-    }
-    ref<Expr> extendedRight = rError;
-    if (rError->getWidth() != rValue->getWidth()) {
-      extendedRight = ZExtExpr::create(rError, rValue->getWidth());
-    }
-
-    result = ExtractExpr::create(AddExpr::create(extendedLeft, extendedRight),
-                                 0, Expr::Int8);
-    valueErrorMap[instr] = result;
+    result = AddExpr::create(lError, rError);
     return result;
   }
   case llvm::Instruction::SDiv: {
@@ -308,34 +251,15 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       rError = getError(executor, rValue, rOp);
     }
 
-    ref<Expr> extendedLeft = lError;
-    if (lError->getWidth() != lValue->getWidth()) {
-      extendedLeft = ZExtExpr::create(lError, lValue->getWidth());
-    }
-    ref<Expr> extendedRight = rError;
-    if (rError->getWidth() != rValue->getWidth()) {
-      extendedRight = ZExtExpr::create(rError, rValue->getWidth());
-    }
-
-    result = ExtractExpr::create(AddExpr::create(extendedLeft, extendedRight),
-                                 0, Expr::Int8);
-    valueErrorMap[instr] = result;
+    result = AddExpr::create(lError, rError);
     return result;
   }
   case llvm::Instruction::GetElementPtr: {
-    // propagate error
+    // Simply propagate error of the first argument
     ref<Expr> error = arguments.at(0).error;
     if (error.isNull()) {
       error = ConstantExpr::create(0, Expr::Int8);
-      llvm::Value *v = instr->getOperand(0);
-      std::map<llvm::Value *, ref<Expr> >::iterator it = valueErrorMap.find(v);
-      if (it != valueErrorMap.end()) {
-        error = valueErrorMap[v];
-      }
-      if (error->getWidth() > Expr::Int8)
-        error = ExtractExpr::create(error, 0, Expr::Int8);
     }
-    valueErrorMap[instr] = error;
 
     if (!hasStoredError(result)) {
       ref<Expr> baseError = retrieveStoredError(arguments[0].value);
@@ -356,9 +280,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
   case llvm::Instruction::FCmp:
   case llvm::Instruction::ICmp: {
     // We assume that decision is precisely made
-    ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
-    valueErrorMap[instr] = error;
-    return error;
+    return ConstantExpr::create(0, Expr::Int8);
   }
   case llvm::Instruction::FRem:
   case llvm::Instruction::SRem:
@@ -371,17 +293,11 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     ref<Expr> error1 = arguments.at(1).error;
 
     if (error0.isNull()) {
-      ref<Expr> noError = ConstantExpr::create(0, Expr::Int8);
-      std::map<llvm::Value *, ref<Expr> >::iterator opIt0 =
-          valueErrorMap.find(instr->getOperand(0));
-      error0 = (opIt0 == valueErrorMap.end() ? noError : opIt0->second);
+      error0 = ConstantExpr::create(0, Expr::Int8);
     }
 
     if (error1.isNull()) {
-      ref<Expr> noError = ConstantExpr::create(0, Expr::Int8);
-      std::map<llvm::Value *, ref<Expr> >::iterator opIt1 =
-          valueErrorMap.find(instr->getOperand(1));
-      error1 = (opIt1 == valueErrorMap.end() ? noError : opIt1->second);
+      error1 = ConstantExpr::create(0, Expr::Int8);
     }
     return ExtractExpr::create(AddExpr::create(error0, error1), 0, Expr::Int8);
   }
@@ -404,15 +320,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     ref<Expr> error = arguments.at(0).error;
     if (error.isNull()) {
       error = ConstantExpr::create(0, Expr::Int8);
-      llvm::Value *v = instr->getOperand(0);
-      std::map<llvm::Value *, ref<Expr> >::iterator it = valueErrorMap.find(v);
-      if (it != valueErrorMap.end()) {
-        error = valueErrorMap[v];
-      }
-      if (error->getWidth() > Expr::Int8)
-        error = ExtractExpr::create(error, 0, Expr::Int8);
     }
-    valueErrorMap[instr] = error;
     return error;
   }
   default: { assert(!"unhandled instruction"); }
@@ -466,9 +374,7 @@ bool ErrorState::hasStoredError(ref<Expr> address) const {
 }
 
 ref<Expr> ErrorState::executeLoad(llvm::Value *value, ref<Expr> address) {
-  ref<Expr> error = retrieveStoredError(address);
-  valueErrorMap[value] = error;
-  return error;
+  return retrieveStoredError(address);
 }
 
 void ErrorState::overwriteWith(ref<ErrorState> overwriting) {
@@ -478,28 +384,9 @@ void ErrorState::overwriteWith(ref<ErrorState> overwriting) {
        it != ie; ++it) {
     storedError[it->first] = it->second;
   }
-
-  for (std::map<llvm::Value *, ref<Expr> >::iterator
-           it = overwriting->valueErrorMap.begin(),
-           ie = overwriting->valueErrorMap.end();
-       it != ie; ++it) {
-    valueErrorMap[it->first] = it->second;
-  }
 }
 
 void ErrorState::print(llvm::raw_ostream &os) const {
-  os << "Value->Expression:\n";
-  for (std::map<llvm::Value *, ref<Expr> >::const_iterator
-           it = valueErrorMap.begin(),
-           ie = valueErrorMap.end();
-       it != ie; ++it) {
-    os << "[";
-    it->first->print(os);
-    os << ",";
-    it->second->print(os);
-    os << "]\n";
-  }
-
   os << "Array->Error Array:\n";
   for (std::map<const Array *, const Array *>::const_iterator
            it = arrayErrorArrayMap.begin(),

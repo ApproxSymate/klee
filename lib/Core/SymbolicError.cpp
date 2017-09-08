@@ -154,10 +154,7 @@ bool SymbolicError::breakLoop(Executor *executor, ExecutionState &state,
                  it1 = phiResultInitErrorStackElem.begin(),
                  ie1 = phiResultInitErrorStackElem.end();
              it1 != ie1; ++it1) {
-          ref<Expr> error = errorState->retrieveError(it1->first->inst);
-          if (error.isNull()) {
-            error = ConstantExpr::create(0, Expr::Int8);
-          }
+          ref<Expr> error = it1->second;
 
           // We store the computed error amount to be used outside the loop, and
           // store it
