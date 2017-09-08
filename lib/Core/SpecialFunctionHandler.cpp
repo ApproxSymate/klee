@@ -447,7 +447,7 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
     ConstraintManager cm = state.symbolicError->outputErrorBound(
         target->inst, bound, inputErrorList);
 
-    if (ComputeErrorBound) {
+    if (ComputeErrorBound == VIA_REAL) {
       std::vector<const Array *> objects;
       for (std::vector<ref<Expr> >::const_iterator it = inputErrorList.begin(),
                                                    ie = inputErrorList.end();
