@@ -291,9 +291,22 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
                                                   ie = objects->end();
        it != ie; ++it) {
     const Array *array = *it;
-    Z3ErrorASTHandle initial_read = builder->buildReal(array->name.c_str());
 
-    Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
+    switch (ComputeErrorBound) {
+    case VIA_INTEGER: {
+      Z3ErrorASTHandle initial_read =
+          builder->buildInteger(array->name.c_str());
+      Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
+      break;
+    }
+    case VIA_REAL: {
+      Z3ErrorASTHandle initial_read = builder->buildReal(array->name.c_str());
+      Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
+      break;
+    }
+    default:
+      break;
+    }
   }
 
   if (DebugPrecision) {

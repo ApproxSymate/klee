@@ -96,7 +96,12 @@ Z3SortHandle Z3ErrorBuilder::getArraySort(Z3SortHandle domainSort,
 
 Z3ErrorASTHandle Z3ErrorBuilder::buildArray(const char *name) {
   Z3SortHandle domainSort = getIntSort();
-  Z3SortHandle rangeSort = getRealSort();
+  Z3SortHandle rangeSort;
+  if (ComputeErrorBound == VIA_INTEGER) {
+    rangeSort = getIntSort();
+  } else {
+    rangeSort = getRealSort();
+  }
   Z3SortHandle t = getArraySort(domainSort, rangeSort);
   Z3_symbol s = Z3_mk_string_symbol(ctx, const_cast<char *>(name));
   return Z3ErrorASTHandle(Z3_mk_const(ctx, s, t), ctx);
@@ -381,6 +386,9 @@ Z3ErrorASTHandle Z3ErrorBuilder::constructActual(ref<Expr> e) {
         so << index / 8;
         name.erase(0, 9);
         name += "__index__" + so.str();
+      }
+      if (ComputeErrorBound == VIA_INTEGER) {
+        return buildInteger(name.c_str());
       }
       return buildReal(name.c_str());
     }
