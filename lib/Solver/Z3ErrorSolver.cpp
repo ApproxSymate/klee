@@ -467,11 +467,13 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
           Z3_ast_vector_get(builder->ctx, upperBoundVector, 2);
 
       if (DebugPrecision) {
-        llvm::errs() << Z3_ast_to_string(builder->ctx, infinityCoefficient)
-                     << "\n";
-        llvm::errs() << Z3_ast_to_string(builder->ctx, upperBound) << "\n";
+        llvm::errs()
+            << "(infinity_coefficient, upper_bound, epsilon_coefficient) = ";
+        llvm::errs() << "(" << Z3_ast_to_string(builder->ctx,
+                                                infinityCoefficient) << ",";
+        llvm::errs() << Z3_ast_to_string(builder->ctx, upperBound) << ",";
         llvm::errs() << Z3_ast_to_string(builder->ctx, epsilonCoefficient)
-                     << "\n";
+                     << ")\n";
       }
 
       int upperBoundValue = 0;
