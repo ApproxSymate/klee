@@ -66,8 +66,6 @@ public:
 
   std::string &getOutputString() { return outputString; }
 
-  void deregisterInputError(ref<Expr> error);
-
   void registerInputError(ref<Expr> error) { inputErrorList.push_back(error); }
 
   void executeStoreSimple(ref<Expr> address, ref<Expr> error);
