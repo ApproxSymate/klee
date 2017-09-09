@@ -457,6 +457,14 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
         objects.push_back(addedObjects.back());
       }
 
+      // We add the path condition constraints
+      for (ConstraintManager::constraint_iterator
+               it = state.constraints.begin(),
+               ie = state.constraints.end();
+           it != ie; ++it) {
+        cm.addConstraint(*it);
+      }
+
       std::vector<bool> infinity;
       std::vector<double> values;
       std::vector<bool> epsilon;
