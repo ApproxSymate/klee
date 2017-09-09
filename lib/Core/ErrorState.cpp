@@ -356,6 +356,13 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
   return ConstantExpr::create(0, Expr::Int8);
 }
 
+void ErrorState::registerInputError(ref<Expr> error) {
+  std::vector<ref<Expr> >::iterator it =
+      std::find(inputErrorList.begin(), inputErrorList.end(), error);
+  if (it == inputErrorList.end())
+    inputErrorList.push_back(error);
+}
+
 void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error) {
   if (error.isNull())
     return;
