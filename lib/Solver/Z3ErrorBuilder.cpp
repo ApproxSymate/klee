@@ -107,6 +107,11 @@ Z3ErrorASTHandle Z3ErrorBuilder::buildReal(const char *name) {
   return Z3ErrorASTHandle(Z3_mk_const(ctx, s, getRealSort()), ctx);
 }
 
+Z3ErrorASTHandle Z3ErrorBuilder::buildInteger(const char *name) {
+  Z3_symbol s = Z3_mk_string_symbol(ctx, const_cast<char *>(name));
+  return Z3ErrorASTHandle(Z3_mk_const(ctx, s, getIntSort()), ctx);
+}
+
 Z3ErrorASTHandle Z3ErrorBuilder::getTrue() {
   return Z3ErrorASTHandle(Z3_mk_true(ctx), ctx);
 }
