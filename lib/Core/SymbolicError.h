@@ -97,7 +97,7 @@ public:
   void deregisterLoopIfExited(Executor *executor, ExecutionState &state,
                               llvm::Instruction *inst);
 
-  void outputComputedErrorBound(std::vector<double> bounds) {
+  void outputComputedErrorBound(std::vector<std::pair<int, double> > bounds) {
     errorState->outputComputedErrorBound(bounds);
   }
 

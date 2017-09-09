@@ -37,7 +37,7 @@ private:
   bool internalRunOptimize(const Query &,
                            const std::vector<const Array *> *objects,
                            std::vector<bool> *infinity,
-                           std::vector<double> *values,
+                           std::vector<std::pair<int, double> > *values,
                            std::vector<bool> *epsilon, bool &hasSolution);
 
 public:
@@ -65,7 +65,7 @@ public:
   bool computeOptimalValues(const Query &,
                             const std::vector<const Array *> &objects,
                             std::vector<bool> &infinity,
-                            std::vector<double> &values,
+                            std::vector<std::pair<int, double> > &values,
                             std::vector<bool> &epsilon, bool &hasSolution);
   SolverRunStatus
   handleSolverResponse(::Z3_solver theSolver, ::Z3_lbool satisfiable,
@@ -76,7 +76,7 @@ public:
   handleOptimizeResponse(::Z3_optimize theSolver, ::Z3_lbool satisfiable,
                          const std::vector<const Array *> *objects,
                          std::vector<bool> *infinity,
-                         std::vector<double> *values,
+                         std::vector<std::pair<int, double> > *values,
                          std::vector<bool> *epsilon, bool &hasSolution);
   SolverRunStatus getOperationStatusCode();
 };
@@ -115,7 +115,7 @@ void Z3ErrorSolver::setCoreSolverTimeout(double timeout) {
 
 bool Z3ErrorSolver::computeOptimalValues(
     const Query &query, const std::vector<const Array *> &objects,
-    std::vector<bool> &infinity, std::vector<double> &values,
+    std::vector<bool> &infinity, std::vector<std::pair<int, double> > &values,
     std::vector<bool> &epsilon, bool &hasSolution) {
   Z3ErrorSolverImpl *solverImpl = (Z3ErrorSolverImpl *)impl;
   return solverImpl->computeOptimalValues(query, objects, infinity, values,
@@ -197,7 +197,7 @@ bool Z3ErrorSolverImpl::computeInitialValues(
 
 bool Z3ErrorSolverImpl::computeOptimalValues(
     const Query &query, const std::vector<const Array *> &objects,
-    std::vector<bool> &infinity, std::vector<double> &values,
+    std::vector<bool> &infinity, std::vector<std::pair<int, double> > &values,
     std::vector<bool> &epsilon, bool &hasSolution) {
   return internalRunOptimize(query, &objects, &infinity, &values, &epsilon,
                              hasSolution);
@@ -264,7 +264,7 @@ bool Z3ErrorSolverImpl::internalRunSolver(
 
 bool Z3ErrorSolverImpl::internalRunOptimize(
     const Query &query, const std::vector<const Array *> *objects,
-    std::vector<bool> *infinity, std::vector<double> *values,
+    std::vector<bool> *infinity, std::vector<std::pair<int, double> > *values,
     std::vector<bool> *epsilon, bool &hasSolution) {
   TimerStatIncrementer t(stats::queryTime);
   // TODO: Does making a new solver for each query have a performance
@@ -438,7 +438,7 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
 SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
     ::Z3_optimize theSolver, ::Z3_lbool satisfiable,
     const std::vector<const Array *> *objects, std::vector<bool> *infinity,
-    std::vector<double> *values, std::vector<bool> *epsilon,
+    std::vector<std::pair<int, double> > *values, std::vector<bool> *epsilon,
     bool &hasSolution) {
   switch (satisfiable) {
   case Z3_L_TRUE: {
@@ -476,10 +476,28 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
                      << ")\n";
       }
 
+      int infinity = 0;
+      int epsilon = 0;
+      bool successGet =
+          Z3_get_numeral_int(builder->ctx, infinityCoefficient, &infinity);
+
+      if (successGet && infinity) {
+        values->push_back(std::pair<int, double>(1, 0));
+        continue;
+      }
+
+      successGet =
+          Z3_get_numeral_int(builder->ctx, epsilonCoefficient, &epsilon);
+
+      if (successGet && epsilon) {
+        values->push_back(std::pair<int, double>(2, 0));
+        continue;
+      }
+
       int upperBoundValue = 0;
       double result;
 
-      bool successGet =
+      successGet =
           Z3_get_numeral_int(builder->ctx, upperBound, &upperBoundValue);
       if (successGet) {
         result = upperBoundValue;
@@ -498,8 +516,9 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
       }
       Z3_dec_ref(builder->ctx, upperBound);
 
-      values->push_back(result);
+      values->push_back(std::pair<int, double>(0, result));
     }
+
     return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE;
   }
   case Z3_L_FALSE:

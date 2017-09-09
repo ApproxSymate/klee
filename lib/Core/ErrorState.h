@@ -55,7 +55,8 @@ public:
 
   ~ErrorState();
 
-  void outputComputedErrorBound(std::vector<double> doublePrecision);
+  void outputComputedErrorBound(
+      std::vector<std::pair<int, double> > doublePrecision);
 
   ConstraintManager outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
                                      double bound,

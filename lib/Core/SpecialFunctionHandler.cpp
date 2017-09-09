@@ -466,7 +466,7 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
       }
 
       std::vector<bool> infinity;
-      std::vector<double> values;
+      std::vector<std::pair<int, double> > values;
       std::vector<bool> epsilon;
       bool hasSolution;
       Query queryWithFalse(cm, ConstantExpr::create(0, Expr::Bool));
@@ -479,7 +479,20 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
         for (unsigned i = 0; i < inputErrorList.size(); ++i) {
           llvm::errs() << "Error Bound for ";
           inputErrorList.at(i)->print(llvm::errs());
-          llvm::errs() << " is " << values.at(i) << "\n";
+          llvm::errs() << " is ";
+          std::pair<int, double> p(values.at(i));
+          switch (p.first) {
+          case 1:
+            llvm::errs() << "infinity";
+            break;
+          case 2:
+            llvm::errs() << "epsilon";
+            break;
+          default:
+            llvm::errs() << p.second;
+            break;
+          }
+          llvm::errs() << "\n";
         }
       }
 
