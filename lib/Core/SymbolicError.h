@@ -123,10 +123,6 @@ public:
 
   void executeStore(ref<Expr> address, ref<Expr> value, ref<Expr> error);
 
-  void registerInputError(ref<Expr> error) {
-    errorState->registerInputError(error);
-  }
-
   void storeError(ref<Expr> address, ref<Expr> error) {
     errorState->executeStoreSimple(address, error);
   }
