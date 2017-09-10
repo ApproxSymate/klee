@@ -90,12 +90,14 @@ Z3ErrorSolverImpl::Z3ErrorSolverImpl()
   timeoutParamStrSymbol = Z3_mk_string_symbol(builder->ctx, "timeout");
   setCoreSolverTimeout(timeout);
 
-  // Set pareto optimality as priority strategy
-  ::Z3_symbol priorityParamStrSymbol =
-      Z3_mk_string_symbol(builder->ctx, "priority");
-  ::Z3_symbol pareto = Z3_mk_string_symbol(builder->ctx, "pareto");
-  Z3_params_set_symbol(builder->ctx, solverParameters, priorityParamStrSymbol,
-                       pareto);
+  if (Pareto) {
+    // Set pareto optimality as priority strategy
+    ::Z3_symbol priorityParamStrSymbol =
+        Z3_mk_string_symbol(builder->ctx, "priority");
+    ::Z3_symbol pareto = Z3_mk_string_symbol(builder->ctx, "pareto");
+    Z3_params_set_symbol(builder->ctx, solverParameters, priorityParamStrSymbol,
+                         pareto);
+  }
 }
 
 Z3ErrorSolverImpl::~Z3ErrorSolverImpl() {

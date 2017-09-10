@@ -371,6 +371,10 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
 }
 
 void ErrorState::registerInputError(ref<Expr> error) {
+  if (!Pareto && inputErrorList.empty()) {
+    inputErrorList.push_back(error);
+    return;
+  }
   std::vector<ref<Expr> >::iterator it =
       std::find(inputErrorList.begin(), inputErrorList.end(), error);
   if (it == inputErrorList.end())
@@ -393,6 +397,9 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error) {
 
 void ErrorState::declareInputError(ref<Expr> address, ref<Expr> error) {
   if (error.isNull())
+    return;
+
+  if (!Pareto && !declaredInputError.empty())
     return;
 
   // At store instruction, we store new error by a multiply of the stored error
@@ -422,6 +429,9 @@ ref<Expr> ErrorState::retrieveStoredError(ref<Expr> address) const {
 }
 
 ref<Expr> ErrorState::retrieveDeclaredInputError(ref<Expr> address) const {
+  if (!Pareto && !declaredInputError.empty()) {
+    return declaredInputError.begin()->second;
+  }
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
     std::map<uintptr_t, ref<Expr> >::const_iterator it =
         declaredInputError.find(cp->getZExtValue());
@@ -464,9 +474,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
   // The following also performs nullity check on the result of the cast. If
   // the type does not match, re is NULL
   if (ReadExpr *re = llvm::dyn_cast<ReadExpr>(baseError)) {
-    if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
       std::string errorName = re->updates.root->name;
-      uint64_t array_index = ce->getZExtValue();
 
       const std::string array_prefix8 = ARRAY_PREFIX8;
       const std::string array_prefix16 = ARRAY_PREFIX16;
@@ -474,45 +482,69 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
       const std::string array_prefix64 = ARRAY_PREFIX64;
 
       if (!errorName.compare(0, array_prefix8.size(), array_prefix8)) {
-        std::ostringstream so;
-        so << array_index;
         errorName.erase(0, 8);
-        errorName += "__index__" + so.str();
-        offset = Expr::createPointer(0);
-
+        if (Pareto) {
+          if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
+            std::ostringstream so;
+            uint64_t array_index = ce->getZExtValue();
+            so << array_index;
+            errorName += "__index__" + so.str();
+            offset = Expr::createPointer(0);
+          }
+        } else {
+          offset = Expr::createPointer(0);
+        }
         const Array *newErrorArray =
             errorArrayCache.CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
         error = ReadExpr::create(ul, offset);
       } else if (!errorName.compare(0, array_prefix16.size(), array_prefix16)) {
-        std::ostringstream so;
-        so << array_index / 2;
         errorName.erase(0, 9);
-        errorName += "__index__" + so.str();
-        offset = Expr::createPointer(0);
-
+        if (Pareto) {
+          if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
+            std::ostringstream so;
+            uint64_t array_index = ce->getZExtValue();
+            so << array_index / 2;
+            errorName += "__index__" + so.str();
+            offset = Expr::createPointer(0);
+          }
+        } else {
+          offset = Expr::createPointer(0);
+        }
         const Array *newErrorArray =
             errorArrayCache.CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
         error = ReadExpr::create(ul, offset);
       } else if (!errorName.compare(0, array_prefix32.size(), array_prefix32)) {
-        std::ostringstream so;
-        so << array_index / 4;
         errorName.erase(0, 9);
-        errorName += "__index__" + so.str();
-        offset = Expr::createPointer(0);
-
+        if (Pareto) {
+          if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
+            std::ostringstream so;
+            uint64_t array_index = ce->getZExtValue();
+            so << array_index / 4;
+            errorName += "__index__" + so.str();
+            offset = Expr::createPointer(0);
+          }
+        } else {
+          offset = Expr::createPointer(0);
+        }
         const Array *newErrorArray =
             errorArrayCache.CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
         error = ReadExpr::create(ul, offset);
       } else if (!errorName.compare(0, array_prefix64.size(), array_prefix64)) {
-        std::ostringstream so;
-        so << array_index / 8;
         errorName.erase(0, 9);
-        errorName += "__index__" + so.str();
-        offset = Expr::createPointer(0);
-
+        if (Pareto) {
+          if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
+            std::ostringstream so;
+            uint64_t array_index = ce->getZExtValue();
+            so << array_index / 8;
+            errorName += "__index__" + so.str();
+            offset = Expr::createPointer(0);
+          }
+        } else {
+          offset = Expr::createPointer(0);
+        }
         const Array *newErrorArray =
             errorArrayCache.CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
@@ -520,7 +552,6 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
       } else {
         error = baseError;
       }
-    }
   }
 
   registerInputError(error);

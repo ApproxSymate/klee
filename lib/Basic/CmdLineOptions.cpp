@@ -101,6 +101,12 @@ llvm::cl::opt<ErrorBoundComputationDomain> ComputeErrorBound(
                      clEnumValEnd),
     llvm::cl::init(NO_COMPUTATION));
 
+llvm::cl::opt<bool>
+Pareto("pareto",
+       llvm::cl::desc("Use pareto optimality when computing error bound, "
+                      "otherwise input errors are considered uniform"),
+       llvm::cl::init(false));
+
 llvm::cl::opt<bool> LoopBreaking(
     "loop-breaking",
     llvm::cl::desc(
