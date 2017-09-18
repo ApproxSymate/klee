@@ -447,6 +447,7 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
     ConstraintManager cm = state.symbolicError->outputErrorBound(
         target->inst, bound, inputErrorList);
 
+#ifdef ENABLE_Z3
     if (ComputeErrorBound != NO_COMPUTATION) {
       std::vector<const Array *> objects;
       for (std::vector<ref<Expr> >::const_iterator it = inputErrorList.begin(),
@@ -499,6 +500,7 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
       // Output the computed error bounds
       state.symbolicError->outputComputedErrorBound(values);
     }
+#endif
     return;
   }
 
