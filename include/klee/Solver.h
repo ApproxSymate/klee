@@ -342,8 +342,10 @@ namespace klee {
   // Create a solver based on the supplied ``CoreSolverType``.
   Solver *createCoreSolver(CoreSolverType cst);
 
+  #ifdef ENABLE_Z3
   // Create a solver for error expression reasoning
   Z3ErrorSolver *createCoreErrorSolver();
+  #endif
 }
 
 #endif

@@ -371,7 +371,9 @@ Executor::Executor(LLVMContext &ctx, const InterpreterOptions &opts,
       interpreterHandler->getOutputFilename(SOLVER_QUERIES_KQUERY_FILE_NAME));
 
   this->solver = new TimingSolver(solver, EqualitySubstitution);
+#ifdef ENABLE_Z3
   this->errorSolver = createCoreErrorSolver();
+#endif
   memory = new MemoryManager(&arrayCache);
 
   if (optionIsSet(DebugPrintInstructions, FILE_ALL) ||
@@ -444,7 +446,9 @@ Executor::~Executor() {
   if (statsTracker)
     delete statsTracker;
   delete solver;
+#ifdef ENABLE_Z3
   delete errorSolver;
+#endif
   delete kmodule;
   while(!timers.empty()) {
     delete timers.back();

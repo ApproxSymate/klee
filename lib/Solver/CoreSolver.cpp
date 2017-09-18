@@ -98,15 +98,13 @@ Solver *createCoreSolver(CoreSolverType cst) {
   }
 }
 
-Z3ErrorSolver *createCoreErrorSolver() {
 #ifdef ENABLE_Z3
+Z3ErrorSolver *createCoreErrorSolver() {
   if (ComputeErrorBound != NO_COMPUTATION) {
     klee_message("Using Z3 for reasoning about error expressions");
     return new Z3ErrorSolver();
   }
   return NULL;
-#else
-  return NULL;
-#endif
 }
+#endif
 }
