@@ -10,6 +10,7 @@
 #ifndef KLEE_ERRORSTATE_H_
 #define KLEE_ERRORSTATE_H_
 
+#include "klee/Constraints.h"
 #include "klee/Expr.h"
 #include "klee/util/ArrayCache.h"
 #include "klee/Internal/Module/Cell.h"
@@ -37,32 +38,49 @@ private:
 
   std::string outputString;
 
+  std::map<uintptr_t, ref<Expr> > declaredInputError;
+
   std::map<uintptr_t, ref<Expr> > storedError;
+
+  std::vector<ref<Expr> > inputErrorList;
 
 public:
   ErrorState() : refCount(0) {}
 
-  ErrorState(ErrorState &symErr) : refCount(0) {
-    storedError = symErr.storedError;
+  ErrorState(ErrorState &errorState) : refCount(0) {
+    declaredInputError = errorState.declaredInputError;
+    storedError = errorState.storedError;
+    inputErrorList = errorState.inputErrorList;
   }
 
   ~ErrorState();
 
-  void outputErrorBound(llvm::Instruction *inst, ref<Expr> error, double bound);
+  void outputComputedErrorBound(
+      std::vector<std::pair<int, double> > doublePrecision);
+
+  ConstraintManager outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
+                                     double bound,
+                                     std::vector<ref<Expr> > &_inputErrorList);
 
   ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
                            ref<Expr> result, std::vector<Cell> &arguments);
 
   std::string &getOutputString() { return outputString; }
 
-  void executeStoreSimple(llvm::Instruction *inst, ref<Expr> address,
-                          ref<Expr> error);
+  void registerInputError(ref<Expr> error);
+
+  void executeStoreSimple(ref<Expr> address, ref<Expr> error);
+
+  void declareInputError(ref<Expr> address, ref<Expr> error);
 
   ref<Expr> retrieveStoredError(ref<Expr> address) const;
 
+  ref<Expr> retrieveDeclaredInputError(ref<Expr> address) const;
+
   bool hasStoredError(ref<Expr> address) const;
 
-  ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address);
+  ref<Expr> executeLoad(llvm::Value *value, ref<Expr> base, ref<Expr> address,
+                        ref<Expr> offset);
 
   /// \brief Overwrite the contents of the current error state with another
   void overwriteWith(ref<ErrorState> overwriting);
@@ -71,7 +89,10 @@ public:
   void print(llvm::raw_ostream &os) const;
 
   /// dump - Print the object content to stderr
-  void dump() const { print(llvm::errs()); }
+  void dump() const {
+    print(llvm::errs());
+    llvm::errs() << "\n";
+  }
 };
 }
 

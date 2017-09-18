@@ -92,6 +92,21 @@ llvm::cl::opt<bool> DebugPrecision(
     llvm::cl::desc("Output debugging trace for numerical precision analysis"),
     llvm::cl::init(false));
 
+llvm::cl::opt<ErrorBoundComputationDomain> ComputeErrorBound(
+    "compute-error-bound", llvm::cl::desc("Compute precision error bound"),
+    llvm::cl::values(clEnumValN(VIA_REAL, "real", "Using real number domain"),
+                     clEnumValN(VIA_INTEGER, "integer", "Using integer domain"),
+                     clEnumValN(NO_COMPUTATION, "none",
+                                "Do not compute error bound (default)"),
+                     clEnumValEnd),
+    llvm::cl::init(NO_COMPUTATION));
+
+llvm::cl::opt<bool>
+Pareto("pareto",
+       llvm::cl::desc("Use pareto optimality when computing error bound, "
+                      "otherwise input errors are considered uniform"),
+       llvm::cl::init(false));
+
 llvm::cl::opt<bool> LoopBreaking(
     "loop-breaking",
     llvm::cl::desc(

@@ -59,6 +59,16 @@ extern llvm::cl::opt<CoreSolverType> DebugCrossCheckCoreSolverWith;
 
 extern llvm::cl::opt<bool> PrecisionError;
 
+enum ErrorBoundComputationDomain {
+  NO_COMPUTATION,
+  VIA_REAL,
+  VIA_INTEGER
+};
+
+extern llvm::cl::opt<ErrorBoundComputationDomain> ComputeErrorBound;
+
+extern llvm::cl::opt<bool> Pareto;
+
 extern llvm::cl::opt<bool> DebugPrecision;
 
 extern llvm::cl::opt<bool> LoopBreaking;

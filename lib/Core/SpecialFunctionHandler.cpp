@@ -12,11 +12,12 @@
 #include "TimingSolver.h"
 
 #include "klee/ExecutionState.h"
-
+#include "klee/SolverImpl.h"
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/KModule.h"
 #include "klee/Internal/Support/Debug.h"
 #include "klee/Internal/Support/ErrorHandling.h"
+#include "klee/util/ExprUtil.h"
 
 #include "Executor.h"
 #include "MemoryManager.h"
@@ -442,7 +443,62 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
     double *boundPtr = reinterpret_cast<double *>(&intValue);
     double bound = *boundPtr;
 
-    state.symbolicError->outputErrorBound(target->inst, bound);
+    std::vector<ref<Expr> > inputErrorList;
+    ConstraintManager cm = state.symbolicError->outputErrorBound(
+        target->inst, bound, inputErrorList);
+
+    if (ComputeErrorBound != NO_COMPUTATION) {
+      std::vector<const Array *> objects;
+      for (std::vector<ref<Expr> >::const_iterator it = inputErrorList.begin(),
+                                                   ie = inputErrorList.end();
+           it != ie; ++it) {
+        std::vector<const Array *> addedObjects;
+        findSymbolicObjects(*it, addedObjects);
+        objects.push_back(addedObjects.back());
+      }
+
+      // We add the path condition constraints
+      for (ConstraintManager::constraint_iterator
+               it = state.constraints.begin(),
+               ie = state.constraints.end();
+           it != ie; ++it) {
+        cm.addConstraint(*it);
+      }
+
+      std::vector<bool> infinity;
+      std::vector<std::pair<int, double> > values;
+      std::vector<bool> epsilon;
+      bool hasSolution;
+      Query queryWithFalse(cm, ConstantExpr::create(0, Expr::Bool));
+      bool success = executor.errorSolver->computeOptimalValues(
+          queryWithFalse, objects, infinity, values, epsilon, hasSolution);
+
+      assert(success && hasSolution && "state has invalid constraint set");
+
+      if (DebugPrecision) {
+        for (unsigned i = 0; i < inputErrorList.size(); ++i) {
+          llvm::errs() << "Error Bound for ";
+          inputErrorList.at(i)->print(llvm::errs());
+          llvm::errs() << " is ";
+          std::pair<int, double> p(values.at(i));
+          switch (p.first) {
+          case 1:
+            llvm::errs() << "infinity";
+            break;
+          case 2:
+            llvm::errs() << "epsilon";
+            break;
+          default:
+            llvm::errs() << p.second;
+            break;
+          }
+          llvm::errs() << "\n";
+        }
+      }
+
+      // Output the computed error bounds
+      state.symbolicError->outputComputedErrorBound(values);
+    }
     return;
   }
 

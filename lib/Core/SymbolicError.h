@@ -97,8 +97,14 @@ public:
   void deregisterLoopIfExited(Executor *executor, ExecutionState &state,
                               llvm::Instruction *inst);
 
-  void outputErrorBound(llvm::Instruction *inst, double bound) {
-    errorState->outputErrorBound(inst, kleeBoundErrorExpr, bound);
+  void outputComputedErrorBound(std::vector<std::pair<int, double> > bounds) {
+    errorState->outputComputedErrorBound(bounds);
+  }
+
+  ConstraintManager outputErrorBound(llvm::Instruction *inst, double bound,
+                                     std::vector<ref<Expr> > &inputErrorList) {
+    return errorState->outputErrorBound(inst, kleeBoundErrorExpr, bound,
+                                        inputErrorList);
   }
 
   ref<Expr> propagateError(Executor *executor, KInstruction *ki,
@@ -115,15 +121,19 @@ public:
 
   std::string &getOutputString() { return errorState->getOutputString(); }
 
-  void executeStore(llvm::Instruction *inst, ref<Expr> address, ref<Expr> value,
-                    ref<Expr> error);
+  void executeStore(ref<Expr> address, ref<Expr> value, ref<Expr> error);
 
-  void storeError(llvm::Instruction *inst, ref<Expr> address, ref<Expr> error) {
-    errorState->executeStoreSimple(inst, address, error);
+  void storeError(ref<Expr> address, ref<Expr> error) {
+    errorState->executeStoreSimple(address, error);
   }
 
-  ref<Expr> executeLoad(llvm::Value *value, ref<Expr> address) {
-    return errorState->executeLoad(value, address);
+  void declareInputError(ref<Expr> address, ref<Expr> error) {
+    errorState->declareInputError(address, error);
+  }
+
+  ref<Expr> executeLoad(llvm::Value *addressValue, ref<Expr> base,
+                        ref<Expr> address, ref<Expr> offset) {
+    return errorState->executeLoad(addressValue, base, address, offset);
   }
 
   void setKleeBoundErrorExpr(ref<Expr> error) { kleeBoundErrorExpr = error; }

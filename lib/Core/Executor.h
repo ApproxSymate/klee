@@ -16,6 +16,7 @@
 #define KLEE_EXECUTOR_H
 
 #include "klee/ExecutionState.h"
+#include "klee/Solver.h"
 #include "klee/Interpreter.h"
 #include "klee/Internal/Module/Cell.h"
 #include "klee/Internal/Module/KInstruction.h"
@@ -129,6 +130,7 @@ private:
 
   ExternalDispatcher *externalDispatcher;
   TimingSolver *solver;
+  Z3ErrorSolver *errorSolver;
   MemoryManager *memory;
   std::set<ExecutionState*> states;
   StatsTracker *statsTracker;

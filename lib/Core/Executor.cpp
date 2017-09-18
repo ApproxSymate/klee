@@ -371,6 +371,7 @@ Executor::Executor(LLVMContext &ctx, const InterpreterOptions &opts,
       interpreterHandler->getOutputFilename(SOLVER_QUERIES_KQUERY_FILE_NAME));
 
   this->solver = new TimingSolver(solver, EqualitySubstitution);
+  this->errorSolver = createCoreErrorSolver();
   memory = new MemoryManager(&arrayCache);
 
   if (optionIsSet(DebugPrintInstructions, FILE_ALL) ||
@@ -443,6 +444,7 @@ Executor::~Executor() {
   if (statsTracker)
     delete statsTracker;
   delete solver;
+  delete errorSolver;
   delete kmodule;
   while(!timers.empty()) {
     delete timers.back();
@@ -4180,8 +4182,7 @@ void Executor::executeMemoryOperation(
         } else {
           ObjectState *wos = state.addressSpace.getWriteable(mo, os);
           wos->write(offset, value);
-          state.symbolicError->executeStore(state.pc->inst, address, value,
-                                            error);
+          state.symbolicError->executeStore(address, value, error);
         }
       } else {
         ref<Expr> result = os->read(offset, type);
@@ -4189,8 +4190,8 @@ void Executor::executeMemoryOperation(
         if (interpreterOpts.MakeConcreteSymbolic)
           result = replaceReadWithSymbolic(state, result);
 
-        ref<Expr> resultError =
-            state.symbolicError->executeLoad(target->inst, address);
+        ref<Expr> resultError = state.symbolicError->executeLoad(
+            target->inst->getOperand(0), mo->getBaseExpr(), address, offset);
         bindLocal(target, state, result, resultError);
       }
 
@@ -4227,13 +4228,13 @@ void Executor::executeMemoryOperation(
         } else {
           ObjectState *wos = bound->addressSpace.getWriteable(mo, os);
           wos->write(mo->getOffsetExpr(address), value);
-          state.symbolicError->executeStore(state.pc->inst, address, value,
-                                            error);
+          state.symbolicError->executeStore(address, value, error);
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
-        ref<Expr> resultError =
-            state.symbolicError->executeLoad(target->inst, address);
+        ref<Expr> resultError = state.symbolicError->executeLoad(
+            target->inst->getOperand(0), mo->getBaseExpr(), address,
+            mo->getOffsetExpr(address));
         bindLocal(target, *bound, result, resultError);
       }
     }
@@ -4344,7 +4345,7 @@ void Executor::executeStoreError(ExecutionState &state, const uintptr_t address,
       UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
   ref<Expr> addressExpr = Expr::createPointer(address);
 
-  state.symbolicError->storeError(state.pc->inst, addressExpr, errorExpr);
+  state.symbolicError->declareInputError(addressExpr, errorExpr);
 }
 
 // store the error amount of a memory object at a given address

@@ -241,6 +241,28 @@ namespace klee {
     /// is off.
     virtual void setCoreSolverTimeout(double timeout);
   };
+
+  /// Z3ErrorSolver - A solver for real arithmetic constraints based on Z3
+  class Z3ErrorSolver : public Solver {
+  public:
+    /// Z3Solver - Construct a new Z3Solver.
+    Z3ErrorSolver();
+
+    /// Get the query in SMT-LIBv2 format.
+    /// \return A C-style string. The caller is responsible for freeing this.
+    virtual char *getConstraintLog(const Query &);
+
+    /// setCoreSolverTimeout - Set constraint solver timeout delay to the given
+    /// value; 0 is off.
+    virtual void setCoreSolverTimeout(double timeout);
+
+    /// computeOptimalValues - Compute optimal values of objects
+    bool computeOptimalValues(const Query &query,
+                              const std::vector<const Array *> &objects,
+                              std::vector<bool> &infinity,
+                              std::vector<std::pair<int, double> > &values,
+                              std::vector<bool> &epsilon, bool &hasSolution);
+  };
 #endif // ENABLE_Z3
 
 #ifdef ENABLE_METASMT
@@ -319,6 +341,9 @@ namespace klee {
 
   // Create a solver based on the supplied ``CoreSolverType``.
   Solver *createCoreSolver(CoreSolverType cst);
+
+  // Create a solver for error expression reasoning
+  Z3ErrorSolver *createCoreErrorSolver();
 }
 
 #endif
