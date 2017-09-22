@@ -252,7 +252,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
 
     ref<Expr> errorLeft = MulExpr::create(extendedLeft, lValue);
     ref<Expr> errorRight = MulExpr::create(extendedRight, rValue);
-    ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
+    ref<Expr> resultError = SubExpr::create(errorLeft, errorRight);
 
     result = ExtractExpr::create(
         result->isZero() ? result : UDivExpr::create(resultError, result), 0,
@@ -276,7 +276,9 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       rError = getError(executor, rValue, rOp);
     }
 
+    ref<Expr> product = MulExpr::create(rError, lError);
     result = AddExpr::create(lError, rError);
+    result = SubExpr::create(result, product);
     return result;
   }
   case llvm::Instruction::FDiv:
@@ -296,7 +298,12 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       rError = getError(executor, rValue, rOp);
     }
 
-    result = AddExpr::create(lError, rError);
+    ref<Expr> divisor = ConstantExpr::create(1, Expr::Int8);
+    divisor = SubExpr::create(divisor, rError);
+    result = SubExpr::create(lError, rError);
+    result = ExtractExpr::create(
+        divisor->isZero() ? result : UDivExpr::create(result, divisor), 0,
+        Expr::Int8);
     return result;
   }
   case llvm::Instruction::SDiv: {
@@ -315,7 +322,12 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       rError = getError(executor, rValue, rOp);
     }
 
-    result = AddExpr::create(lError, rError);
+    ref<Expr> divisor = ConstantExpr::create(1, Expr::Int8);
+    divisor = SubExpr::create(divisor, rError);
+    result = SubExpr::create(lError, rError);
+    result = ExtractExpr::create(
+        divisor->isZero() ? result : UDivExpr::create(result, divisor), 0,
+        Expr::Int8);
     return result;
   }
   case llvm::Instruction::FCmp:
