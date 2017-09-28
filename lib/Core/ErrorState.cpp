@@ -116,7 +116,7 @@ void ErrorState::outputComputedErrorBound(
 
 ConstraintManager
 ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
-                             double bound,
+                             double bound, std::string name,
                              std::vector<ref<Expr> > &_inputErrorList) {
   ConstraintManager ret;
 
@@ -172,7 +172,7 @@ ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
     }
   }
 
-  stream << "\nOutput Error: ";
+  stream << "\nOutput Error of " << name << " : ";
   stream << PrettyExpressionBuilder::construct(error);
   stream << "\nAbsolute Bound: " << bound << "\n";
   stream.flush();

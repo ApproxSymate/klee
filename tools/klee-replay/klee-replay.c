@@ -414,7 +414,7 @@ unsigned klee_is_symbolic(uintptr_t x) {
   return 0;
 }
 
-void klee_bound_error(uintptr_t x, double bound) { ; }
+void klee_bound_error(uintptr_t x, const char *name, double bound) { ; }
 
 void klee_track_error(void *addr, const char *name) { ; }
 

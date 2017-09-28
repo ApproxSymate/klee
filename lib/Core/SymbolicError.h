@@ -102,8 +102,9 @@ public:
   }
 
   ConstraintManager outputErrorBound(llvm::Instruction *inst, double bound,
+                                     std::string name,
                                      std::vector<ref<Expr> > &inputErrorList) {
-    return errorState->outputErrorBound(inst, kleeBoundErrorExpr, bound,
+    return errorState->outputErrorBound(inst, kleeBoundErrorExpr, bound, name,
                                         inputErrorList);
   }
 
