@@ -10,6 +10,8 @@
 #ifndef KLEE_SYMBOLICERROR_H_
 #define KLEE_SYMBOLICERROR_H_
 
+#include "../../include/klee/Internal/Module/EdgeProbability.h"
+
 #include "ErrorState.h"
 
 #include "klee/Expr.h"
@@ -58,8 +60,13 @@ class SymbolicError {
   /// klee_bound_error call
   ref<Expr> kleeBoundErrorExpr;
 
+  /// \brief The path probability
+  double pathProbability;
+
 public:
-  SymbolicError() { errorState = ref<ErrorState>(new ErrorState()); }
+  SymbolicError() : pathProbability(-1.0) {
+    errorState = ref<ErrorState>(new ErrorState());
+  }
 
   SymbolicError(SymbolicError &symErr)
       : errorState(new ErrorState(*(symErr.errorState))),
@@ -67,7 +74,8 @@ public:
         initWritesErrorStack(symErr.initWritesErrorStack),
         phiResultWidthList(symErr.phiResultWidthList),
         phiResultInitErrorStack(symErr.phiResultInitErrorStack),
-        tmpPhiResultInitError(symErr.tmpPhiResultInitError) {}
+        tmpPhiResultInitError(symErr.tmpPhiResultInitError),
+        pathProbability(symErr.pathProbability) {}
 
   ~SymbolicError();
 
@@ -138,6 +146,16 @@ public:
   }
 
   void setKleeBoundErrorExpr(ref<Expr> error) { kleeBoundErrorExpr = error; }
+
+  void recomputePathProbability(llvm::BasicBlock *dst, llvm::BasicBlock *src) {
+    if (pathProbability < 0) {
+      pathProbability = EdgeProbability::instance->getEdgeProbability(dst, src);
+      return;
+    }
+    pathProbability = EdgeProbability::instance->getEdgeProbability(dst, src);
+  }
+
+  double getPathProbability() const { return pathProbability; }
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;
