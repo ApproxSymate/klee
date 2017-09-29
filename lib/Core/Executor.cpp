@@ -1507,6 +1507,9 @@ void Executor::transferToBasicBlock(BasicBlock *dst, BasicBlock *src,
     PHINode *first = static_cast<PHINode*>(state.pc->inst);
     state.incomingBBIndex = first->getBasicBlockIndex(src);
   }
+
+  if (PrecisionError)
+    state.symbolicError->recomputePathProbability(dst, src);
 }
 
 /// Compute the true target of a function call, resolving LLVM and KLEE aliases

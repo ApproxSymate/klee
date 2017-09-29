@@ -496,6 +496,13 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       delete f;
     }
 
+    double pathProbability = state.symbolicError->getPathProbability();
+    if (pathProbability > 0) {
+      llvm::raw_ostream *probFile = openTestFile("prob", id);
+      *probFile << pathProbability;
+      delete probFile;
+    }
+
     if (errorMessage || WriteKQueries) {
       std::string constraints;
       m_interpreter->getConstraintLog(state, constraints,Interpreter::KQUERY);
