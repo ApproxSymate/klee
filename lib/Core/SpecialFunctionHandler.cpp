@@ -435,17 +435,19 @@ void
 SpecialFunctionHandler::handleBoundError(ExecutionState &state,
                                          KInstruction *target,
                                          std::vector<ref<Expr> > &arguments) {
-  assert(arguments.size() == 2 &&
+  assert(arguments.size() == 3 &&
          "invalid number of arguments to klee_bound_error");
 
-  if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(arguments.at(1))) {
+  if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(arguments.at(2))) {
     uint64_t intValue = ce->getZExtValue();
     double *boundPtr = reinterpret_cast<double *>(&intValue);
     double bound = *boundPtr;
 
+    std::string name = readStringAtAddress(state, arguments[1]);
+
     std::vector<ref<Expr> > inputErrorList;
     ConstraintManager cm = state.symbolicError->outputErrorBound(
-        target->inst, bound, inputErrorList);
+        target->inst, bound, name, inputErrorList);
 
 #ifdef ENABLE_Z3
     if (ComputeErrorBound != NO_COMPUTATION) {
