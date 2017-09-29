@@ -26,6 +26,7 @@
 #include "llvm/Pass.h"
 #include "llvm/PassManager.h"
 
+#include "../../include/klee/Internal/Module/EdgeProbability.h"
 #include "../../include/klee/Internal/Module/TripCounter.h"
 #if LLVM_VERSION_CODE > LLVM_VERSION(3, 2)
 #include "llvm/IR/Constants.h"
@@ -1418,6 +1419,9 @@ int main(int argc, char **argv, char **envp) {
   llvm::PassManager PM;
   TripCounter::instance = new TripCounter();
   PM.add(TripCounter::instance);
+  PM.add(new llvm::BranchProbabilityInfo());
+  EdgeProbability::instance = new EdgeProbability();
+  PM.add(EdgeProbability::instance);
   PM.run(*analysisModule);
 
   const Module *finalModule = analysisModule;
