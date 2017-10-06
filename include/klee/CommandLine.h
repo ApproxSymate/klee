@@ -67,7 +67,7 @@ enum ErrorBoundComputationDomain {
 
 extern llvm::cl::opt<ErrorBoundComputationDomain> ComputeErrorBound;
 
-extern llvm::cl::opt<bool> Pareto;
+extern llvm::cl::opt<bool> UniformInputError;
 
 extern llvm::cl::opt<bool> DebugPrecision;
 
