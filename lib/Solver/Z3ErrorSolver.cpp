@@ -90,7 +90,7 @@ Z3ErrorSolverImpl::Z3ErrorSolverImpl()
   timeoutParamStrSymbol = Z3_mk_string_symbol(builder->ctx, "timeout");
   setCoreSolverTimeout(timeout);
 
-  if (Pareto) {
+  if (!UniformInputError) {
     // Set pareto optimality as priority strategy
     ::Z3_symbol priorityParamStrSymbol =
         Z3_mk_string_symbol(builder->ctx, "priority");

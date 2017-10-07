@@ -383,7 +383,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
 }
 
 void ErrorState::registerInputError(ref<Expr> error) {
-  if (!Pareto && inputErrorList.empty()) {
+  if (UniformInputError && inputErrorList.empty()) {
     inputErrorList.push_back(error);
     return;
   }
@@ -411,7 +411,7 @@ void ErrorState::declareInputError(ref<Expr> address, ref<Expr> error) {
   if (error.isNull())
     return;
 
-  if (!Pareto && !declaredInputError.empty())
+  if (UniformInputError && !declaredInputError.empty())
     return;
 
   // At store instruction, we store new error by a multiply of the stored error
@@ -441,7 +441,7 @@ ref<Expr> ErrorState::retrieveStoredError(ref<Expr> address) const {
 }
 
 ref<Expr> ErrorState::retrieveDeclaredInputError(ref<Expr> address) const {
-  if (!Pareto && !declaredInputError.empty()) {
+  if (UniformInputError && !declaredInputError.empty()) {
     return declaredInputError.begin()->second;
   }
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
@@ -495,7 +495,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
 
       if (!errorName.compare(0, array_prefix8.size(), array_prefix8)) {
         errorName.erase(0, 8);
-        if (Pareto) {
+        if (!UniformInputError) {
           if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
             std::ostringstream so;
             uint64_t array_index = ce->getZExtValue();
@@ -512,7 +512,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
         error = ReadExpr::create(ul, offset);
       } else if (!errorName.compare(0, array_prefix16.size(), array_prefix16)) {
         errorName.erase(0, 9);
-        if (Pareto) {
+        if (!UniformInputError) {
           if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
             std::ostringstream so;
             uint64_t array_index = ce->getZExtValue();
@@ -529,7 +529,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
         error = ReadExpr::create(ul, offset);
       } else if (!errorName.compare(0, array_prefix32.size(), array_prefix32)) {
         errorName.erase(0, 9);
-        if (Pareto) {
+        if (!UniformInputError) {
           if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
             std::ostringstream so;
             uint64_t array_index = ce->getZExtValue();
@@ -546,7 +546,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
         error = ReadExpr::create(ul, offset);
       } else if (!errorName.compare(0, array_prefix64.size(), array_prefix64)) {
         errorName.erase(0, 9);
-        if (Pareto) {
+        if (!UniformInputError) {
           if (ConstantExpr *ce = llvm::dyn_cast<ConstantExpr>(offset)) {
             std::ostringstream so;
             uint64_t array_index = ce->getZExtValue();
