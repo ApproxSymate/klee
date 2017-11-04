@@ -63,6 +63,9 @@ class SymbolicError {
   /// \brief The path probability
   double pathProbability;
 
+  /// \brief Path line numbers
+  std::vector<std::pair<std::string, unsigned> > lineNumbers;
+
 public:
   SymbolicError() : pathProbability(-1.0) {
     errorState = ref<ErrorState>(new ErrorState());
@@ -75,7 +78,8 @@ public:
         phiResultWidthList(symErr.phiResultWidthList),
         phiResultInitErrorStack(symErr.phiResultInitErrorStack),
         tmpPhiResultInitError(symErr.tmpPhiResultInitError),
-        pathProbability(symErr.pathProbability) {}
+        pathProbability(symErr.pathProbability),
+        lineNumbers(symErr.lineNumbers) {}
 
   ~SymbolicError();
 
@@ -156,6 +160,12 @@ public:
   }
 
   double getPathProbability() const { return pathProbability; }
+
+  void addLineNumber(llvm::Instruction *i);
+
+  const std::vector<std::pair<std::string, unsigned> > &getLineNumbers() const {
+    return lineNumbers;
+  }
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;

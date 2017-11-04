@@ -503,6 +503,24 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       delete probFile;
     }
 
+    const std::vector<std::pair<std::string, unsigned> > &lineNumbers(
+        state.symbolicError->getLineNumbers());
+    if (lineNumbers.size() > 0) {
+      llvm::raw_ostream *linesFile = openTestFile("lines", id);
+      std::string currentFile = "";
+      for (std::vector<std::pair<std::string, unsigned> >::const_iterator
+               it = lineNumbers.begin(),
+               ie = lineNumbers.end();
+           it != ie; ++it) {
+        if (currentFile != it->first) {
+          *linesFile << "File: " << it->first << "\n";
+          currentFile = it->first;
+        }
+        *linesFile << it->second << "\n";
+      }
+      delete linesFile;
+    }
+
     if (errorMessage || WriteKQueries) {
       std::string constraints;
       m_interpreter->getConstraintLog(state, constraints,Interpreter::KQUERY);

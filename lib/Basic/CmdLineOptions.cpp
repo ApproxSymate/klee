@@ -114,8 +114,14 @@ llvm::cl::opt<bool> LoopBreaking(
     llvm::cl::init(false));
 
 llvm::cl::opt<bool>
-    UseAssignmentValidatingSolver("debug-assignment-validating-solver",
-                                  llvm::cl::init(false));
+LineNumbers("line-numbers",
+            llvm::cl::desc(
+                "Enable output of visited line numbers in test*.lines files"),
+            llvm::cl::init(false));
+
+llvm::cl::opt<bool>
+UseAssignmentValidatingSolver("debug-assignment-validating-solver",
+                              llvm::cl::init(false));
 
 #ifdef ENABLE_METASMT
 
