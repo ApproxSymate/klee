@@ -24,6 +24,14 @@
 #include "llvm/Instructions.h"
 #endif
 
+#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 5)
+#include <llvm/IR/DebugInfo.h>
+#elif LLVM_VERSION_CODE >= LLVM_VERSION(3, 2)
+#include <llvm/DebugInfo.h>
+#else
+#include <llvm/Analysis/DebugInfo.h>
+#endif
+
 using namespace klee;
 
 uint64_t SymbolicError::freshVariableId = 0;
@@ -265,6 +273,19 @@ void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
       }
     }
     storeError(address, error);
+}
+
+void SymbolicError::addLineNumber(llvm::Instruction *i) {
+  if (llvm::MDNode *n = i->getMetadata("dbg")) {
+    llvm::DILocation loc(n);
+    unsigned lineNumber = loc.getLineNumber();
+    std::string fileName = loc.getFilename().str();
+    if (lineNumbers.empty() || lineNumbers.back().first != fileName ||
+        lineNumbers.back().second != lineNumber) {
+      lineNumbers.push_back(
+          std::pair<std::string, unsigned>(fileName, lineNumber));
+    }
+  }
 }
 
 void SymbolicError::print(llvm::raw_ostream &os) const {
