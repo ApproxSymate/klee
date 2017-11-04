@@ -60,7 +60,8 @@ public:
 
   ConstraintManager outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
                                      double bound, std::string name,
-                                     std::vector<ref<Expr> > &_inputErrorList);
+                                     std::vector<ref<Expr> > &_inputErrorList,
+                                     ConstraintManager errorConstraints);
 
   ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
                            ref<Expr> result, std::vector<Cell> &arguments);

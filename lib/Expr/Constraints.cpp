@@ -127,7 +127,6 @@ ref<Expr> ConstraintManager::simplifyExpr(ref<Expr> e) const {
 
 void ConstraintManager::addConstraintInternal(ref<Expr> e) {
   // rewrite any known equalities and split Ands into different conjuncts
-
   switch (e->getKind()) {
   case Expr::Constant:
     assert(cast<ConstantExpr>(e)->isTrue() && 
@@ -163,6 +162,10 @@ void ConstraintManager::addConstraintInternal(ref<Expr> e) {
     constraints.push_back(e);
     break;
   }
+}
+
+void ConstraintManager::addErrorConstraint(ref<Expr> e) {
+  constraints.push_back(e);
 }
 
 void ConstraintManager::addConstraint(ref<Expr> e) {
