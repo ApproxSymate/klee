@@ -146,7 +146,7 @@ void SeedInfo::patchSeed(const ExecutionState &state,
                                                    it->second[i], Expr::Int8)),
                           ConstantExpr::create(1, Expr::Int8));
       } else {
-        tmp.addConstraint(isSeed, ConstantExpr::create(0, Expr::Int8));
+        tmp.addConstraint(isSeed, ConstantExpr::create(1, Expr::Int8));
       }
     }
   }
