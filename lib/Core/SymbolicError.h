@@ -152,7 +152,7 @@ public:
       pathProbability = EdgeProbability::instance->getEdgeProbability(dst, src);
       return;
     }
-    pathProbability = EdgeProbability::instance->getEdgeProbability(dst, src);
+    pathProbability += EdgeProbability::instance->getEdgeProbability(dst, src);
   }
 
   double getPathProbability() const { return pathProbability; }
