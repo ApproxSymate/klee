@@ -171,7 +171,7 @@ public:
   void addSymbolic(const MemoryObject *mo, const Array *array);
   void addConstraint(ref<Expr> e, ref<Expr> error) {
     constraints.addConstraint(e);
-    symbolicError->addErrorCondition(error);
+    symbolicError->addErrorConstraint(error);
   }
 
   bool merge(const ExecutionState &b);

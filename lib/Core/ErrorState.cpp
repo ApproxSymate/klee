@@ -349,8 +349,18 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
                                        arguments.at(1).error);
 
     // x * (1 - ex)
-    ref<Expr> leftMul = MulExpr::create(arguments.at(0).error, lError);
-    ref<Expr> rightMul = MulExpr::create(arguments.at(1).error, rError);
+    ref<Expr> extendedLeft = lError;
+    if (lError->getWidth() != arguments.at(0).value->getWidth()) {
+      extendedLeft =
+          ZExtExpr::create(lError, arguments.at(0).value->getWidth());
+    }
+    ref<Expr> extendedRight = rError;
+    if (rError->getWidth() != arguments.at(1).value->getWidth()) {
+      extendedRight =
+          ZExtExpr::create(rError, arguments.at(1).value->getWidth());
+    }
+    ref<Expr> leftMul = MulExpr::create(arguments.at(0).value, extendedLeft);
+    ref<Expr> rightMul = MulExpr::create(arguments.at(1).value, extendedRight);
 
     switch (ii->getPredicate()) {
     case llvm::ICmpInst::ICMP_EQ: {

@@ -1001,7 +1001,7 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
 
     addConstraint(*trueState, condition, error);
     addConstraint(*falseState, Expr::createIsZero(condition),
-                  ConstantExpr::create(1, Expr::Int8));
+                  Expr::createIsZero(error));
 
     // Kinda gross, do we even really still want this option?
     if (MaxDepth && MaxDepth<=trueState->depth) {
@@ -3944,7 +3944,7 @@ ref<Expr> Executor::replaceReadWithSymbolic(ExecutionState &state,
   ref<Expr> res = Expr::createTempRead(array, e->getWidth());
   ref<Expr> eq = NotOptimizedExpr::create(EqExpr::create(e, res));
   llvm::errs() << "Making symbolic: " << eq << "\n";
-  state.addConstraint(eq, ConstantExpr::create(1, Expr::Int8));
+  state.addConstraint(eq, ConstantExpr::create(0, Expr::Int8));
   return res;
 }
 
@@ -4030,7 +4030,7 @@ void Executor::executeAlloc(ExecutionState &state,
     }
 
     StatePair fixedSize = fork(state, EqExpr::create(example, size),
-                               ConstantExpr::create(1, Expr::Int8), true);
+                               ConstantExpr::create(0, Expr::Int8), true);
 
     if (fixedSize.second) { 
       // Check for exactly two values
@@ -4053,7 +4053,7 @@ void Executor::executeAlloc(ExecutionState &state,
         StatePair hugeSize =
             fork(*fixedSize.second,
                  UltExpr::create(ConstantExpr::alloc(1 << 31, W), size),
-                 ConstantExpr::create(1, Expr::Int8), true);
+                 ConstantExpr::create(0, Expr::Int8), true);
         if (hugeSize.first) {
           klee_message("NOTE: found huge malloc, returning 0");
           bindLocal(target, *hugeSize.first,
@@ -4084,7 +4084,7 @@ void Executor::executeFree(ExecutionState &state,
                            ref<Expr> address,
                            KInstruction *target) {
   StatePair zeroPointer = fork(state, Expr::createIsZero(address),
-                               ConstantExpr::create(1, Expr::Int8), true);
+                               ConstantExpr::create(0, Expr::Int8), true);
   if (zeroPointer.first) {
     if (target)
       bindLocal(target, *zeroPointer.first, Expr::createPointer(0),
@@ -4127,7 +4127,7 @@ void Executor::resolveExact(ExecutionState &state,
     ref<Expr> inBounds = EqExpr::create(p, it->first->getBaseExpr());
 
     StatePair branches =
-        fork(*unbound, inBounds, ConstantExpr::create(1, Expr::Int8), true);
+        fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), true);
 
     if (branches.first)
       results.push_back(std::make_pair(*it, branches.first));
@@ -4234,7 +4234,7 @@ void Executor::executeMemoryOperation(
     ref<Expr> inBounds = mo->getBoundsCheckPointer(address, bytes);
 
     StatePair branches =
-        fork(*unbound, inBounds, ConstantExpr::create(1, Expr::Int8), true);
+        fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), true);
     ExecutionState *bound = branches.first;
 
     // bound can be 0 on failure or overlapped 
@@ -4569,7 +4569,7 @@ bool Executor::getSymbolicSolution(const ExecutionState &state,
       // If the particular constraint operated on in this iteration through
       // the loop isn't implied then add it to the list of constraints.
       if (!mustBeTrue)
-        tmp.addConstraint(*pi, ConstantExpr::create(1, Expr::Int8));
+        tmp.addConstraint(*pi, ConstantExpr::create(0, Expr::Int8));
     }
     if (pi!=pie) break;
   }

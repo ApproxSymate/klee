@@ -161,7 +161,7 @@ public:
 
   double getPathProbability() const { return pathProbability; }
 
-  void addErrorCondition(ref<Expr> error) {
+  void addErrorConstraint(ref<Expr> error) {
     constraintsWithError.addErrorConstraint(error);
   }
 
