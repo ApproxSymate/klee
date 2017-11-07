@@ -60,11 +60,11 @@ class SymbolicError {
   /// klee_bound_error call
   ref<Expr> kleeBoundErrorExpr;
 
-  /// \brief The path probability flag
-  bool winningPath;
+  /// \brief How many times the edge with less probability taken
+  uint64_t lostBranchTakenCount;
 
 public:
-  SymbolicError() : winningPath(true) {
+  SymbolicError() : lostBranchTakenCount(0) {
     errorState = ref<ErrorState>(new ErrorState());
   }
 
@@ -75,7 +75,7 @@ public:
         phiResultWidthList(symErr.phiResultWidthList),
         phiResultInitErrorStack(symErr.phiResultInitErrorStack),
         tmpPhiResultInitError(symErr.tmpPhiResultInitError),
-        winningPath(symErr.winningPath) {}
+        lostBranchTakenCount(symErr.lostBranchTakenCount) {}
 
   ~SymbolicError();
 
@@ -149,10 +149,10 @@ public:
 
   void recomputePathProbability(llvm::BasicBlock *dst, llvm::BasicBlock *src) {
     if (!EdgeProbability::instance->hasWinningProbability(dst, src))
-      winningPath = false;
+      lostBranchTakenCount++;
   }
 
-  bool isWinningPath() const { return winningPath; }
+  uint64_t getLostBranchTakenCount() const { return lostBranchTakenCount; }
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;

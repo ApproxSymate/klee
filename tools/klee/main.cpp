@@ -496,11 +496,11 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       delete f;
     }
 
-    bool winningPath = state.symbolicError->isWinningPath();
-    if (winningPath) {
-      llvm::raw_ostream *choicePathFile = openTestFile("choice", id);
-      *choicePathFile << 1;
-      delete choicePathFile;
+    uint64_t improbability = state.symbolicError->getLostBranchTakenCount();
+    {
+      llvm::raw_ostream *improbabilityFile = openTestFile("improb", id);
+      *improbabilityFile << improbability << "\n";
+      delete improbabilityFile;
     }
 
     if (errorMessage || WriteKQueries) {
