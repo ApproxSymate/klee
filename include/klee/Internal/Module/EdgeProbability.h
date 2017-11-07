@@ -50,7 +50,8 @@ public:
 
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const;
 
-  double getEdgeProbability(llvm::BasicBlock *dst, llvm::BasicBlock *src) const;
+  bool hasWinningProbability(llvm::BasicBlock *dst,
+                             llvm::BasicBlock *src) const;
 };
 }
 
