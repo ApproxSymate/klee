@@ -56,8 +56,18 @@ bool EdgeProbability::runOnModule(llvm::Module &M) {
         llvm::BranchProbability prob = BPI.getEdgeProbability(&(*bi), i);
         double floatProb =
             ((double)prob.getNumerator()) / ((double)prob.getDenominator());
-        edgeProbability[&(*bi)] =
-            std::pair<llvm::BasicBlock *, double>(succ, floatProb);
+        std::map<llvm::BasicBlock *,
+                 std::pair<llvm::BasicBlock *, double> >::iterator it =
+            edgeProbability.find(&(*bi));
+        if (it != edgeProbability.end()) {
+          if (it->second.second < floatProb) {
+            edgeProbability[&(*bi)] =
+                std::pair<llvm::BasicBlock *, double>(succ, floatProb);
+          }
+        } else {
+          edgeProbability[&(*bi)] =
+              std::pair<llvm::BasicBlock *, double>(succ, floatProb);
+        }
       }
     }
   }
@@ -70,15 +80,16 @@ void EdgeProbability::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequired<llvm::BranchProbabilityInfo>();
 }
 
-double EdgeProbability::getEdgeProbability(llvm::BasicBlock *dst,
-                                           llvm::BasicBlock *src) const {
+bool EdgeProbability::hasWinningProbability(llvm::BasicBlock *dst,
+                                            llvm::BasicBlock *src) const {
   std::map<llvm::BasicBlock *,
            std::pair<llvm::BasicBlock *, double> >::const_iterator it =
       edgeProbability.find(src);
   if (it != edgeProbability.end()) {
-    return it->second.second;
+    if (dst == it->second.first)
+      return true;
   }
-  return 0;
+  return false;
 }
 
 char EdgeProbability::ID = 0;
