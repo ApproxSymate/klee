@@ -117,7 +117,8 @@ void ErrorState::outputComputedErrorBound(
 ConstraintManager
 ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
                              double bound, std::string name,
-                             std::vector<ref<Expr> > &_inputErrorList) {
+                             std::vector<ref<Expr> > &_inputErrorList,
+                             ConstraintManager errorConstraints) {
   ConstraintManager ret;
 
   std::string errorVar;
@@ -172,6 +173,12 @@ ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
     }
   }
 
+  stream << "\nPath conditions with error: ";
+  for (ConstraintManager::const_iterator it = errorConstraints.begin(),
+                                         ie = errorConstraints.end();
+       it != ie; ++it) {
+    stream << PrettyExpressionBuilder::construct(*it);
+  }
   stream << "\nOutput Error of " << name << " : ";
   stream << PrettyExpressionBuilder::construct(error);
   stream << "\nAbsolute Bound: " << bound << "\n";
@@ -332,8 +339,84 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
   }
   case llvm::Instruction::FCmp:
   case llvm::Instruction::ICmp: {
-    // We assume that decision is precisely made
-    return ConstantExpr::create(0, Expr::Int8);
+    llvm::CmpInst *ci = cast<llvm::CmpInst>(instr);
+    llvm::ICmpInst *ii = cast<llvm::ICmpInst>(ci);
+
+    //(1 - ex)
+    ref<Expr> lError = SubExpr::create(ConstantExpr::create(1, Expr::Int8),
+                                       arguments.at(0).error);
+    ref<Expr> rError = SubExpr::create(ConstantExpr::create(1, Expr::Int8),
+                                       arguments.at(1).error);
+
+    // x * (1 - ex)
+    ref<Expr> extendedLeft = lError;
+    if (lError->getWidth() != arguments.at(0).value->getWidth()) {
+      extendedLeft =
+          ZExtExpr::create(lError, arguments.at(0).value->getWidth());
+    }
+    ref<Expr> extendedRight = rError;
+    if (rError->getWidth() != arguments.at(1).value->getWidth()) {
+      extendedRight =
+          ZExtExpr::create(rError, arguments.at(1).value->getWidth());
+    }
+    ref<Expr> leftMul = MulExpr::create(arguments.at(0).value, extendedLeft);
+    ref<Expr> rightMul = MulExpr::create(arguments.at(1).value, extendedRight);
+
+    switch (ii->getPredicate()) {
+    case llvm::ICmpInst::ICMP_EQ: {
+      return EqExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    case llvm::ICmpInst::ICMP_NE: {
+      return NeExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    case llvm::ICmpInst::ICMP_UGT: {
+      return UgtExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    case llvm::ICmpInst::ICMP_UGE: {
+      return UgeExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    case llvm::ICmpInst::ICMP_ULT: {
+      return UltExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    case llvm::ICmpInst::ICMP_ULE: {
+      return UleExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    case llvm::ICmpInst::ICMP_SGT: {
+      return SgtExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    case llvm::ICmpInst::ICMP_SGE: {
+      return SgeExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    case llvm::ICmpInst::ICMP_SLT: {
+      return SltExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    case llvm::ICmpInst::ICMP_SLE: {
+      return SleExpr::create(leftMul, rightMul);
+      break;
+    }
+
+    default:
+      return ConstantExpr::create(1, Expr::Int8);
+    }
+    break;
   }
   case llvm::Instruction::FRem:
   case llvm::Instruction::SRem:

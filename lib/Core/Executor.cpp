@@ -779,11 +779,12 @@ void Executor::branch(ExecutionState &state,
 
   for (unsigned i=0; i<N; ++i)
     if (result[i])
-      addConstraint(*result[i], conditions[i]);
+      addConstraint(*result[i], conditions[i],
+                    ConstantExpr::create(1, Expr::Int8));
 }
 
-Executor::StatePair 
-Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
+Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
+                                   ref<Expr> error, bool isInternal) {
   Solver::Validity res;
   std::map< ExecutionState*, std::vector<SeedInfo> >::iterator it = 
     seedMap.find(&current);
@@ -811,7 +812,7 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
       bool success = solver->getValue(current, condition, value);
       assert(success && "FIXME: Unhandled solver failure");
       (void) success;
-      addConstraint(current, EqExpr::create(value, condition));
+      addConstraint(current, EqExpr::create(value, condition), error);
       condition = value;
     }
   }
@@ -842,10 +843,10 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
         // add constraints
         if(branch) {
           res = Solver::True;
-          addConstraint(current, condition);
+          addConstraint(current, condition, error);
         } else  {
           res = Solver::False;
-          addConstraint(current, Expr::createIsZero(condition));
+          addConstraint(current, Expr::createIsZero(condition), error);
         }
       }
     } else if (res==Solver::Unknown) {
@@ -867,10 +868,10 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
 
         TimerStatIncrementer timer(stats::forkTime);
         if (theRNG.getBool()) {
-          addConstraint(current, condition);
+          addConstraint(current, condition, error);
           res = Solver::True;        
         } else {
-          addConstraint(current, Expr::createIsZero(condition));
+          addConstraint(current, Expr::createIsZero(condition), error);
           res = Solver::False;
         }
       }
@@ -903,7 +904,8 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
       assert(trueSeed || falseSeed);
       
       res = trueSeed ? Solver::True : Solver::False;
-      addConstraint(current, trueSeed ? condition : Expr::createIsZero(condition));
+      addConstraint(
+          current, trueSeed ? condition : Expr::createIsZero(condition), error);
     }
   }
 
@@ -997,8 +999,9 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
       }
     }
 
-    addConstraint(*trueState, condition);
-    addConstraint(*falseState, Expr::createIsZero(condition));
+    addConstraint(*trueState, condition, error);
+    addConstraint(*falseState, Expr::createIsZero(condition),
+                  Expr::createIsZero(error));
 
     // Kinda gross, do we even really still want this option?
     if (MaxDepth && MaxDepth<=trueState->depth) {
@@ -1011,7 +1014,8 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
   }
 }
 
-void Executor::addConstraint(ExecutionState &state, ref<Expr> condition) {
+void Executor::addConstraint(ExecutionState &state, ref<Expr> condition,
+                             ref<Expr> error) {
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(condition)) {
     if (!CE->isTrue())
       llvm::report_fatal_error("attempt to add invalid constraint");
@@ -1039,7 +1043,7 @@ void Executor::addConstraint(ExecutionState &state, ref<Expr> condition) {
       klee_warning("seeds patched for violating constraint"); 
   }
 
-  state.addConstraint(condition);
+  state.addConstraint(condition, error);
   if (ivcEnabled)
     doImpliedValueConcretization(state, condition, 
                                  ConstantExpr::alloc(1, Expr::Bool));
@@ -1196,8 +1200,9 @@ Executor::toConstant(ExecutionState &state,
   else
     klee_warning_once(reason, "%s", os.str().c_str());
 
-  addConstraint(state, EqExpr::create(e, value));
-    
+  addConstraint(state, EqExpr::create(e, value),
+                ConstantExpr::create(1, Expr::Int8));
+
   return value;
 }
 
@@ -1676,7 +1681,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       assert(bi->getCondition() == bi->getOperand(0) &&
              "Wrong operand index!");
       ref<Expr> cond = eval(ki, 0, state).value;
-      Executor::StatePair branches = fork(state, cond, false);
+      ref<Expr> error = eval(ki, 0, state).error;
+      Executor::StatePair branches = fork(state, cond, error, false);
 
       // NOTE: There is a hidden dependency here, markBranchVisited
       // requires that we still be in the context of the branch
@@ -1912,7 +1918,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
         bool success = solver->getValue(*free, v, value);
         assert(success && "FIXME: Unhandled solver failure");
         (void) success;
-        StatePair res = fork(*free, EqExpr::create(v, value), true);
+        StatePair res = fork(*free, EqExpr::create(v, value),
+                             ConstantExpr::create(1, Expr::Int8), true);
         if (res.first) {
           uint64_t addr = value->getZExtValue();
           if (legalFunctions.count(addr)) {
@@ -3937,7 +3944,7 @@ ref<Expr> Executor::replaceReadWithSymbolic(ExecutionState &state,
   ref<Expr> res = Expr::createTempRead(array, e->getWidth());
   ref<Expr> eq = NotOptimizedExpr::create(EqExpr::create(e, res));
   llvm::errs() << "Making symbolic: " << eq << "\n";
-  state.addConstraint(eq);
+  state.addConstraint(eq, ConstantExpr::create(0, Expr::Int8));
   return res;
 }
 
@@ -4022,8 +4029,9 @@ void Executor::executeAlloc(ExecutionState &state,
       example = tmp;
     }
 
-    StatePair fixedSize = fork(state, EqExpr::create(example, size), true);
-    
+    StatePair fixedSize = fork(state, EqExpr::create(example, size),
+                               ConstantExpr::create(0, Expr::Int8), true);
+
     if (fixedSize.second) { 
       // Check for exactly two values
       ref<ConstantExpr> tmp;
@@ -4042,10 +4050,10 @@ void Executor::executeAlloc(ExecutionState &state,
       } else {
         // See if a *really* big value is possible. If so assume
         // malloc will fail for it, so lets fork and return 0.
-        StatePair hugeSize = 
-          fork(*fixedSize.second, 
-               UltExpr::create(ConstantExpr::alloc(1<<31, W), size), 
-               true);
+        StatePair hugeSize =
+            fork(*fixedSize.second,
+                 UltExpr::create(ConstantExpr::alloc(1 << 31, W), size),
+                 ConstantExpr::create(0, Expr::Int8), true);
         if (hugeSize.first) {
           klee_message("NOTE: found huge malloc, returning 0");
           bindLocal(target, *hugeSize.first,
@@ -4075,7 +4083,8 @@ void Executor::executeAlloc(ExecutionState &state,
 void Executor::executeFree(ExecutionState &state,
                            ref<Expr> address,
                            KInstruction *target) {
-  StatePair zeroPointer = fork(state, Expr::createIsZero(address), true);
+  StatePair zeroPointer = fork(state, Expr::createIsZero(address),
+                               ConstantExpr::create(0, Expr::Int8), true);
   if (zeroPointer.first) {
     if (target)
       bindLocal(target, *zeroPointer.first, Expr::createPointer(0),
@@ -4116,9 +4125,10 @@ void Executor::resolveExact(ExecutionState &state,
   for (ResolutionList::iterator it = rl.begin(), ie = rl.end(); 
        it != ie; ++it) {
     ref<Expr> inBounds = EqExpr::create(p, it->first->getBaseExpr());
-    
-    StatePair branches = fork(*unbound, inBounds, true);
-    
+
+    StatePair branches =
+        fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), true);
+
     if (branches.first)
       results.push_back(std::make_pair(*it, branches.first));
 
@@ -4222,8 +4232,9 @@ void Executor::executeMemoryOperation(
     const MemoryObject *mo = i->first;
     const ObjectState *os = i->second;
     ref<Expr> inBounds = mo->getBoundsCheckPointer(address, bytes);
-    
-    StatePair branches = fork(*unbound, inBounds, true);
+
+    StatePair branches =
+        fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), true);
     ExecutionState *bound = branches.first;
 
     // bound can be 0 on failure or overlapped 
@@ -4557,7 +4568,8 @@ bool Executor::getSymbolicSolution(const ExecutionState &state,
       if (!success) break;
       // If the particular constraint operated on in this iteration through
       // the loop isn't implied then add it to the list of constraints.
-      if (!mustBeTrue) tmp.addConstraint(*pi);
+      if (!mustBeTrue)
+        tmp.addConstraint(*pi, ConstantExpr::create(0, Expr::Int8));
     }
     if (pi!=pie) break;
   }
