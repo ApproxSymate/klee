@@ -63,9 +63,13 @@ class SymbolicError {
   /// \brief The path probability
   double pathProbability;
 
+  /// \brief The path length
+  int branchCount;
+
 public:
   SymbolicError() : pathProbability(-1.0) {
     errorState = ref<ErrorState>(new ErrorState());
+    branchCount = 0;
   }
 
   SymbolicError(SymbolicError &symErr)
@@ -75,7 +79,8 @@ public:
         phiResultWidthList(symErr.phiResultWidthList),
         phiResultInitErrorStack(symErr.phiResultInitErrorStack),
         tmpPhiResultInitError(symErr.tmpPhiResultInitError),
-        pathProbability(symErr.pathProbability) {}
+        pathProbability(symErr.pathProbability),
+        branchCount(symErr.branchCount) {}
 
   ~SymbolicError();
 
@@ -150,12 +155,16 @@ public:
   void recomputePathProbability(llvm::BasicBlock *dst, llvm::BasicBlock *src) {
     if (pathProbability < 0) {
       pathProbability = EdgeProbability::instance->getEdgeProbability(dst, src);
+      branchCount++;
       return;
     }
+    branchCount++;
     pathProbability *= EdgeProbability::instance->getEdgeProbability(dst, src);
   }
 
   double getPathProbability() const { return pathProbability; }
+
+  double getBranchCount() const { return branchCount; }
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;
