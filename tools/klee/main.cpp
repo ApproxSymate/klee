@@ -497,9 +497,11 @@ void KleeHandler::processTestCase(const ExecutionState &state,
     }
 
     double pathProbability = state.symbolicError->getPathProbability();
+    int branchCount = state.symbolicError->getBranchCount();
     if (pathProbability > 0) {
       llvm::raw_ostream *probFile = openTestFile("prob", id);
-      *probFile << pathProbability;
+      *probFile << "(pathLength, pathProbability) = (" << branchCount << ", "
+                << pathProbability << ")\n";
       delete probFile;
     }
 
