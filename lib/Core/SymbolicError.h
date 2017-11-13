@@ -67,9 +67,8 @@ class SymbolicError {
   int branchCount;
 
 public:
-  SymbolicError() : pathProbability(-1.0) {
+  SymbolicError() : pathProbability(-1.0), branchCount(0) {
     errorState = ref<ErrorState>(new ErrorState());
-    branchCount = 0;
   }
 
   SymbolicError(SymbolicError &symErr)
@@ -153,12 +152,11 @@ public:
   void setKleeBoundErrorExpr(ref<Expr> error) { kleeBoundErrorExpr = error; }
 
   void recomputePathProbability(llvm::BasicBlock *dst, llvm::BasicBlock *src) {
+    branchCount++;
     if (pathProbability < 0) {
       pathProbability = EdgeProbability::instance->getEdgeProbability(dst, src);
-      branchCount++;
       return;
     }
-    branchCount++;
     pathProbability *= EdgeProbability::instance->getEdgeProbability(dst, src);
   }
 
