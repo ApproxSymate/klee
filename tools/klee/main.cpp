@@ -21,6 +21,7 @@
 #include "klee/Internal/System/Time.h"
 #include "klee/Internal/Support/PrintVersion.h"
 #include "klee/Internal/Support/ErrorHandling.h"
+#include "klee/util/PrettyExpressionBuilder.h"
 
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
@@ -508,8 +509,20 @@ void KleeHandler::processTestCase(const ExecutionState &state,
     if (errorMessage || WriteKQueries) {
       std::string constraints;
       m_interpreter->getConstraintLog(state, constraints,Interpreter::KQUERY);
+      ConstraintManager constraintsWithError =
+          state.symbolicError->getConstraintsWithError();
       llvm::raw_ostream *f = openTestFile("kquery", id);
       *f << constraints;
+      *f << "\nPath conditions with error:";
+
+      for (ConstraintManager::const_iterator it = constraintsWithError.begin(),
+                                             ie = constraintsWithError.end();
+           it != ie; ++it) {
+        if (it != constraintsWithError.begin())
+          *f << " && " << PrettyExpressionBuilder::construct(*it);
+        else
+          *f << PrettyExpressionBuilder::construct(*it);
+      }
       delete f;
     }
 

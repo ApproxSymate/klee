@@ -348,19 +348,19 @@ std::string PrettyExpressionBuilder::iteExpr(std::string condition,
 // Bitvector comparison
 std::string PrettyExpressionBuilder::bvLtExpr(std::string lhs,
                                               std::string rhs) {
-  return "(" + lhs + " \\< " + rhs + ")";
+  return "(" + lhs + " < " + rhs + ")";
 }
 std::string PrettyExpressionBuilder::bvLeExpr(std::string lhs,
                                               std::string rhs) {
-  return "(" + lhs + " \\<= " + rhs + ")";
+  return "(" + lhs + " <= " + rhs + ")";
 }
 std::string PrettyExpressionBuilder::sbvLtExpr(std::string lhs,
                                                std::string rhs) {
-  return "(" + lhs + " \\< " + rhs + ")";
+  return "(" + lhs + " < " + rhs + ")";
 }
 std::string PrettyExpressionBuilder::sbvLeExpr(std::string lhs,
                                                std::string rhs) {
-  return "(" + lhs + " \\<= " + rhs + ")";
+  return "(" + lhs + " <= " + rhs + ")";
 }
 
 std::string PrettyExpressionBuilder::constructAShrByConstant(

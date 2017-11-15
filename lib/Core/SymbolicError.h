@@ -17,6 +17,7 @@
 #include "klee/Expr.h"
 #include "klee/Internal/Module/Cell.h"
 #include "klee/util/ArrayCache.h"
+#include "klee/Constraints.h"
 
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Instructions.h"
@@ -59,6 +60,9 @@ class SymbolicError {
   /// \brief Temporary storage to store the error expression for
   /// klee_bound_error call
   ref<Expr> kleeBoundErrorExpr;
+
+  /// \brief Contains the path conditions with propagated error
+  ConstraintManager constraintsWithError;
 
   /// \brief The path probability
   double pathProbability;
@@ -163,6 +167,12 @@ public:
   double getPathProbability() const { return pathProbability; }
 
   double getBranchCount() const { return branchCount; }
+
+  ConstraintManager getConstraintsWithError() { return constraintsWithError; }
+
+  void addErrorConstraint(ref<Expr> error) {
+    constraintsWithError.addErrorConstraint(error);
+  }
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;
