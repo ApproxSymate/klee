@@ -428,7 +428,17 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     if (error1.isNull()) {
       error1 = ConstantExpr::create(0, Expr::Int8);
     }
-    return ExtractExpr::create(AddExpr::create(error0, error1), 0, Expr::Int8);
+
+    ref<Expr> addExpr;
+    if (error0->getWidth() != error1->getWidth())
+      addExpr = (ZExtExpr::create(error0, error1->getWidth()), error1);
+    else
+      addExpr = AddExpr::create(error0, error1);
+
+    if (addExpr->getWidth() > 1)
+      return ExtractExpr::create(addExpr, 0, Expr::Int8);
+    else
+      return ConstantExpr::create(0, Expr::Int8);
   }
   case llvm::Instruction::AShr:
   case llvm::Instruction::FPExt:
