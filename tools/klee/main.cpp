@@ -22,6 +22,7 @@
 #include "klee/Internal/Support/PrintVersion.h"
 #include "klee/Internal/Support/ErrorHandling.h"
 #include "klee/util/PrettyExpressionBuilder.h"
+#include "klee/CommandLine.h"
 
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
@@ -506,15 +507,11 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       delete probFile;
     }
 
-    if (errorMessage || WriteKQueries) {
-      std::string constraints;
-      m_interpreter->getConstraintLog(state, constraints,Interpreter::KQUERY);
+    if (PrecisionError) {
+      llvm::raw_ostream *f = openTestFile("kquery_precision_error", id);
       ConstraintManager constraintsWithError =
           state.symbolicError->getConstraintsWithError();
-      llvm::raw_ostream *f = openTestFile("kquery", id);
-      *f << constraints;
-      *f << "\nPath conditions with error:";
-
+      *f << "Path conditions with error:";
       for (ConstraintManager::const_iterator it = constraintsWithError.begin(),
                                              ie = constraintsWithError.end();
            it != ie; ++it) {
@@ -523,6 +520,14 @@ void KleeHandler::processTestCase(const ExecutionState &state,
         else
           *f << PrettyExpressionBuilder::construct(*it);
       }
+      delete f;
+    }
+
+    if (errorMessage || WriteKQueries) {
+      std::string constraints;
+      m_interpreter->getConstraintLog(state, constraints, Interpreter::KQUERY);
+      llvm::raw_ostream *f = openTestFile("kquery", id);
+      *f << constraints;
       delete f;
     }
 
