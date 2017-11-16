@@ -416,7 +416,7 @@ void SpecialFunctionHandler::handleAssume(ExecutionState &state,
                                      Executor::User);
     }
   } else {
-    executor.addConstraint(state, e);
+    executor.addConstraint(state, e, ConstantExpr::create(0, Expr::Int8));
   }
 }
 
@@ -697,18 +697,18 @@ void SpecialFunctionHandler::handleRealloc(ExecutionState &state,
   ref<Expr> address = arguments[0];
   ref<Expr> size = arguments[1];
 
-  Executor::StatePair zeroSize = executor.fork(state, 
-                                               Expr::createIsZero(size), 
-                                               true);
-  
+  Executor::StatePair zeroSize =
+      executor.fork(state, Expr::createIsZero(size),
+                    ConstantExpr::create(0, Expr::Int8), true);
+
   if (zeroSize.first) { // size == 0
     executor.executeFree(*zeroSize.first, address, target);   
   }
   if (zeroSize.second) { // size != 0
-    Executor::StatePair zeroPointer = executor.fork(*zeroSize.second, 
-                                                    Expr::createIsZero(address), 
-                                                    true);
-    
+    Executor::StatePair zeroPointer =
+        executor.fork(*zeroSize.second, Expr::createIsZero(address),
+                      ConstantExpr::create(0, Expr::Int8), true);
+
     if (zeroPointer.first) { // address == 0
       executor.executeAlloc(*zeroPointer.first, size, false, target);
     } 
