@@ -51,6 +51,7 @@ public:
     declaredInputError = errorState.declaredInputError;
     storedError = errorState.storedError;
     inputErrorList = errorState.inputErrorList;
+    outputString = errorState.outputString;
   }
 
   ~ErrorState();
