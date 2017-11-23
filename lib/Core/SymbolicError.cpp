@@ -241,7 +241,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
   }
 
   if (!error.second.isNull()) {
-    constraintsWithError.addConstraint(error.second);
+    constraintsWithError.push_back(error.second);
   }
   return error.first;
 }

@@ -509,11 +509,12 @@ void KleeHandler::processTestCase(const ExecutionState &state,
 
     if (PrecisionError) {
       llvm::raw_ostream *f = openTestFile("kquery_precision_error", id);
-      ConstraintManager constraintsWithError =
+      std::vector<ref<Expr> > &constraintsWithError =
           state.symbolicError->getConstraintsWithError();
       *f << "Path conditions with error:";
-      for (ConstraintManager::const_iterator it = constraintsWithError.begin(),
-                                             ie = constraintsWithError.end();
+      for (std::vector<ref<Expr> >::const_iterator
+               it = constraintsWithError.begin(),
+               ie = constraintsWithError.end();
            it != ie; ++it) {
         if (it != constraintsWithError.begin())
           *f << " && " << PrettyExpressionBuilder::construct(*it);
