@@ -80,6 +80,8 @@ public:
 
   bool hasStoredError(ref<Expr> address) const;
 
+  /// \brief Retrieve the error expression from the stored error expressions
+  /// map. This returns 0 when the address is not found.
   ref<Expr> executeLoad(llvm::Value *value, ref<Expr> base, ref<Expr> address,
                         ref<Expr> offset);
 
