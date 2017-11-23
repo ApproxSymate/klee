@@ -83,9 +83,6 @@ public:
   ref<Expr> executeLoad(llvm::Value *value, ref<Expr> base, ref<Expr> address,
                         ref<Expr> offset);
 
-  /// \brief Overwrite the contents of the current error state with another
-  void overwriteWith(ref<ErrorState> overwriting);
-
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;
 

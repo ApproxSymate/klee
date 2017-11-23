@@ -655,15 +655,6 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
   return error;
 }
 
-void ErrorState::overwriteWith(ref<ErrorState> overwriting) {
-  for (std::map<uintptr_t, ref<Expr> >::iterator
-           it = overwriting->storedError.begin(),
-           ie = overwriting->storedError.end();
-       it != ie; ++it) {
-    storedError[it->first] = it->second;
-  }
-}
-
 void ErrorState::print(llvm::raw_ostream &os) const {
   os << "Array->Error Array:\n";
   for (std::map<const Array *, const Array *>::const_iterator
