@@ -63,8 +63,10 @@ public:
                                      double bound, std::string name,
                                      std::vector<ref<Expr> > &_inputErrorList);
 
-  ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
-                           ref<Expr> result, std::vector<Cell> &arguments);
+  std::pair<ref<Expr>, ref<Expr> > propagateError(Executor *executor,
+                                                  llvm::Instruction *instr,
+                                                  ref<Expr> result,
+                                                  std::vector<Cell> &arguments);
 
   std::string &getOutputString() { return outputString; }
 

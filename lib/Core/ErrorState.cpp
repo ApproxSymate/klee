@@ -181,15 +181,20 @@ ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
   return ret;
 }
 
-ref<Expr> ErrorState::propagateError(Executor *executor,
-                                     llvm::Instruction *instr, ref<Expr> result,
-                                     std::vector<Cell> &arguments) {
+std::pair<ref<Expr>, ref<Expr> >
+ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
+                           ref<Expr> result, std::vector<Cell> &arguments) {
+  ref<Expr> nullExpr;
+
   switch (instr->getOpcode()) {
-  case llvm::Instruction::PHI: { return arguments.at(0).error; }
+  case llvm::Instruction::PHI: {
+    return std::pair<ref<Expr>, ref<Expr> >(arguments.at(0).error, nullExpr);
+  }
   case llvm::Instruction::Call:
   case llvm::Instruction::Invoke: {
     // Return a dummy error
-    return ConstantExpr::create(0, Expr::Int8);
+    return std::pair<ref<Expr>, ref<Expr> >(ConstantExpr::create(0, Expr::Int8),
+                                            nullExpr);
   }
   case llvm::Instruction::FAdd:
   case llvm::Instruction::Add: {
@@ -222,7 +227,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     result = ExtractExpr::create(
         result->isZero() ? result : UDivExpr::create(resultError, result), 0,
         Expr::Int8);
-    return result;
+    return std::pair<ref<Expr>, ref<Expr> >(result, nullExpr);
   }
   case llvm::Instruction::FSub:
   case llvm::Instruction::Sub: {
@@ -257,7 +262,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     result = ExtractExpr::create(
         result->isZero() ? result : UDivExpr::create(resultError, result), 0,
         Expr::Int8);
-    return result;
+    return std::pair<ref<Expr>, ref<Expr> >(result, nullExpr);
   }
   case llvm::Instruction::FMul:
   case llvm::Instruction::Mul: {
@@ -279,7 +284,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     ref<Expr> product = MulExpr::create(rError, lError);
     result = AddExpr::create(lError, rError);
     result = SubExpr::create(result, product);
-    return result;
+    return std::pair<ref<Expr>, ref<Expr> >(result, nullExpr);
   }
   case llvm::Instruction::FDiv:
   case llvm::Instruction::UDiv: {
@@ -304,7 +309,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     result = ExtractExpr::create(
         divisor->isZero() ? result : UDivExpr::create(result, divisor), 0,
         Expr::Int8);
-    return result;
+    return std::pair<ref<Expr>, ref<Expr> >(result, nullExpr);
   }
   case llvm::Instruction::SDiv: {
     llvm::Value *lOp = instr->getOperand(0);
@@ -328,7 +333,7 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     result = ExtractExpr::create(
         divisor->isZero() ? result : UDivExpr::create(result, divisor), 0,
         Expr::Int8);
-    return result;
+    return std::pair<ref<Expr>, ref<Expr> >(result, nullExpr);
   }
   case llvm::Instruction::FCmp:
   case llvm::Instruction::ICmp: {
@@ -355,61 +360,65 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     ref<Expr> leftMul = MulExpr::create(arguments.at(0).value, extendedLeft);
     ref<Expr> rightMul = MulExpr::create(arguments.at(1).value, extendedRight);
 
+    ref<Expr> conditionWithError;
+
     switch (ii->getPredicate()) {
     case llvm::ICmpInst::ICMP_EQ: {
-      return EqExpr::create(leftMul, rightMul);
+      conditionWithError = EqExpr::create(leftMul, rightMul);
       break;
     }
 
     case llvm::ICmpInst::ICMP_NE: {
-      return NeExpr::create(leftMul, rightMul);
+      conditionWithError = NeExpr::create(leftMul, rightMul);
       break;
     }
 
     case llvm::ICmpInst::ICMP_UGT: {
-      return UgtExpr::create(leftMul, rightMul);
+      conditionWithError = UgtExpr::create(leftMul, rightMul);
       break;
     }
 
     case llvm::ICmpInst::ICMP_UGE: {
-      return UgeExpr::create(leftMul, rightMul);
+      conditionWithError = UgeExpr::create(leftMul, rightMul);
       break;
     }
 
     case llvm::ICmpInst::ICMP_ULT: {
-      return UltExpr::create(leftMul, rightMul);
+      conditionWithError = UltExpr::create(leftMul, rightMul);
       break;
     }
 
     case llvm::ICmpInst::ICMP_ULE: {
-      return UleExpr::create(leftMul, rightMul);
+      conditionWithError = UleExpr::create(leftMul, rightMul);
       break;
     }
 
     case llvm::ICmpInst::ICMP_SGT: {
-      return SgtExpr::create(leftMul, rightMul);
+      conditionWithError = SgtExpr::create(leftMul, rightMul);
       break;
     }
 
     case llvm::ICmpInst::ICMP_SGE: {
-      return SgeExpr::create(leftMul, rightMul);
+      conditionWithError = SgeExpr::create(leftMul, rightMul);
       break;
     }
 
     case llvm::ICmpInst::ICMP_SLT: {
-      return SltExpr::create(leftMul, rightMul);
+      conditionWithError = SltExpr::create(leftMul, rightMul);
       break;
     }
 
     case llvm::ICmpInst::ICMP_SLE: {
-      return SleExpr::create(leftMul, rightMul);
+      conditionWithError = SleExpr::create(leftMul, rightMul);
       break;
     }
 
     default:
-      return ConstantExpr::create(1, Expr::Int8);
+      conditionWithError = ConstantExpr::create(1, Expr::Bool);
+      break;
     }
-    break;
+    return std::pair<ref<Expr>, ref<Expr> >(ConstantExpr::create(0, Expr::Int8),
+                                            conditionWithError);
   }
   case llvm::Instruction::FRem:
   case llvm::Instruction::SRem:
@@ -436,9 +445,11 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
       addExpr = AddExpr::create(error0, error1);
 
     if (addExpr->getWidth() > 1)
-      return ExtractExpr::create(addExpr, 0, Expr::Int8);
+      return std::pair<ref<Expr>, ref<Expr> >(
+          ExtractExpr::create(addExpr, 0, Expr::Int8), nullExpr);
     else
-      return ConstantExpr::create(0, Expr::Int8);
+      return std::pair<ref<Expr>, ref<Expr> >(
+          ConstantExpr::create(0, Expr::Int8), nullExpr);
   }
   case llvm::Instruction::AShr:
   case llvm::Instruction::FPExt:
@@ -461,11 +472,12 @@ ref<Expr> ErrorState::propagateError(Executor *executor,
     if (error.isNull()) {
       error = ConstantExpr::create(0, Expr::Int8);
     }
-    return error;
+    return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
   }
   default: { assert(!"unhandled instruction"); }
   }
-  return ConstantExpr::create(0, Expr::Int8);
+  return std::pair<ref<Expr>, ref<Expr> >(ConstantExpr::create(0, Expr::Int8),
+                                          nullExpr);
 }
 
 void ErrorState::registerInputError(ref<Expr> error) {
