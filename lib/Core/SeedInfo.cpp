@@ -63,7 +63,7 @@ void SeedInfo::patchSeed(const ExecutionState &state,
   std::vector< ref<Expr> > required(state.constraints.begin(),
                                     state.constraints.end());
   ExecutionState tmp(required);
-  tmp.addConstraint(condition, ConstantExpr::create(0, Expr::Int8));
+  tmp.addConstraint(condition);
 
   // Try and patch direct reads first, this is likely to resolve the
   // problem quickly and avoids long traversal of all seed
@@ -105,11 +105,10 @@ void SeedInfo::patchSeed(const ExecutionState &state,
         assert(success && "FIXME: Unhandled solver failure");            
         (void) success;
         it2->second[i] = value->getZExtValue(8);
-        tmp.addConstraint(EqExpr::create(read, ConstantExpr::alloc(
-                                                   it2->second[i], Expr::Int8)),
-                          ConstantExpr::create(0, Expr::Int8));
+        tmp.addConstraint(EqExpr::create(
+            read, ConstantExpr::alloc(it2->second[i], Expr::Int8)));
       } else {
-        tmp.addConstraint(isSeed, ConstantExpr::create(0, Expr::Int8));
+        tmp.addConstraint(isSeed);
       }
     }
   }
@@ -142,11 +141,10 @@ void SeedInfo::patchSeed(const ExecutionState &state,
         assert(success && "FIXME: Unhandled solver failure");            
         (void) success;
         it->second[i] = value->getZExtValue(8);
-        tmp.addConstraint(EqExpr::create(read, ConstantExpr::alloc(
-                                                   it->second[i], Expr::Int8)),
-                          ConstantExpr::create(0, Expr::Int8));
+        tmp.addConstraint(EqExpr::create(
+            read, ConstantExpr::alloc(it->second[i], Expr::Int8)));
       } else {
-        tmp.addConstraint(isSeed, ConstantExpr::create(0, Expr::Int8));
+        tmp.addConstraint(isSeed);
       }
     }
   }
