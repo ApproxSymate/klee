@@ -486,11 +486,10 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error) {
   // At store instruction, we store new error by a multiply of the stored error
   // with the loop trip count.
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+	// We only store the error of concrete addresses
     uint64_t intAddress = cp->getZExtValue();
     storedError[intAddress] = error;
-    return;
   }
-  assert(!"non-constant address");
 }
 
 void ErrorState::declareInputError(ref<Expr> address, ref<Expr> error) {
