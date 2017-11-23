@@ -82,6 +82,7 @@ public:
         phiResultWidthList(symErr.phiResultWidthList),
         phiResultInitErrorStack(symErr.phiResultInitErrorStack),
         tmpPhiResultInitError(symErr.tmpPhiResultInitError),
+        constraintsWithError(symErr.constraintsWithError),
         pathProbability(symErr.pathProbability),
         branchCount(symErr.branchCount) {}
 
