@@ -779,8 +779,7 @@ void Executor::branch(ExecutionState &state,
 
   for (unsigned i=0; i<N; ++i)
     if (result[i])
-      addConstraint(*result[i], conditions[i],
-                    ConstantExpr::create(0, Expr::Int8));
+      addConstraint(*result[i], conditions[i]);
 }
 
 Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
@@ -812,7 +811,7 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
       bool success = solver->getValue(current, condition, value);
       assert(success && "FIXME: Unhandled solver failure");
       (void) success;
-      addConstraint(current, EqExpr::create(value, condition), error);
+      addConstraint(current, EqExpr::create(value, condition));
       condition = value;
     }
   }
@@ -843,10 +842,10 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
         // add constraints
         if(branch) {
           res = Solver::True;
-          addConstraint(current, condition, error);
+          addConstraint(current, condition);
         } else  {
           res = Solver::False;
-          addConstraint(current, Expr::createIsZero(condition), error);
+          addConstraint(current, Expr::createIsZero(condition));
         }
       }
     } else if (res==Solver::Unknown) {
@@ -868,10 +867,10 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
 
         TimerStatIncrementer timer(stats::forkTime);
         if (theRNG.getBool()) {
-          addConstraint(current, condition, error);
+          addConstraint(current, condition);
           res = Solver::True;        
         } else {
-          addConstraint(current, Expr::createIsZero(condition), error);
+          addConstraint(current, Expr::createIsZero(condition));
           res = Solver::False;
         }
       }
@@ -904,8 +903,8 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
       assert(trueSeed || falseSeed);
       
       res = trueSeed ? Solver::True : Solver::False;
-      addConstraint(
-          current, trueSeed ? condition : Expr::createIsZero(condition), error);
+      addConstraint(current,
+                    trueSeed ? condition : Expr::createIsZero(condition));
     }
   }
 
@@ -999,9 +998,9 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
       }
     }
 
-    addConstraint(*trueState, condition, error);
-    addConstraint(*falseState, Expr::createIsZero(condition),
-                  Expr::createIsZero(error));
+    addConstraint(*trueState, condition);
+    addConstraint(*falseState, Expr::createIsZero(condition));
+    falseState->symbolicError->negateTopConstraint();
 
     // Kinda gross, do we even really still want this option?
     if (MaxDepth && MaxDepth<=trueState->depth) {
@@ -1014,8 +1013,7 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
   }
 }
 
-void Executor::addConstraint(ExecutionState &state, ref<Expr> condition,
-                             ref<Expr> error) {
+void Executor::addConstraint(ExecutionState &state, ref<Expr> condition) {
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(condition)) {
     if (!CE->isTrue())
       llvm::report_fatal_error("attempt to add invalid constraint");
@@ -1043,7 +1041,7 @@ void Executor::addConstraint(ExecutionState &state, ref<Expr> condition,
       klee_warning("seeds patched for violating constraint"); 
   }
 
-  state.addConstraint(condition, error);
+  state.addConstraint(condition);
   if (ivcEnabled)
     doImpliedValueConcretization(state, condition, 
                                  ConstantExpr::alloc(1, Expr::Bool));
@@ -1200,8 +1198,7 @@ Executor::toConstant(ExecutionState &state,
   else
     klee_warning_once(reason, "%s", os.str().c_str());
 
-  addConstraint(state, EqExpr::create(e, value),
-                ConstantExpr::create(0, Expr::Int8));
+  addConstraint(state, EqExpr::create(e, value));
 
   return value;
 }
@@ -3944,7 +3941,7 @@ ref<Expr> Executor::replaceReadWithSymbolic(ExecutionState &state,
   ref<Expr> res = Expr::createTempRead(array, e->getWidth());
   ref<Expr> eq = NotOptimizedExpr::create(EqExpr::create(e, res));
   llvm::errs() << "Making symbolic: " << eq << "\n";
-  state.addConstraint(eq, ConstantExpr::create(0, Expr::Int8));
+  state.addConstraint(eq);
   return res;
 }
 
@@ -4569,7 +4566,7 @@ bool Executor::getSymbolicSolution(const ExecutionState &state,
       // If the particular constraint operated on in this iteration through
       // the loop isn't implied then add it to the list of constraints.
       if (!mustBeTrue)
-        tmp.addConstraint(*pi, ConstantExpr::create(0, Expr::Int8));
+        tmp.addConstraint(*pi);
     }
     if (pi!=pie) break;
   }

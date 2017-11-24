@@ -62,7 +62,7 @@ class SymbolicError {
   ref<Expr> kleeBoundErrorExpr;
 
   /// \brief Contains the path conditions with propagated error
-  ConstraintManager constraintsWithError;
+  std::vector<ref<Expr> > constraintsWithError;
 
   /// \brief The path probability
   double pathProbability;
@@ -82,6 +82,7 @@ public:
         phiResultWidthList(symErr.phiResultWidthList),
         phiResultInitErrorStack(symErr.phiResultInitErrorStack),
         tmpPhiResultInitError(symErr.tmpPhiResultInitError),
+        constraintsWithError(symErr.constraintsWithError),
         pathProbability(symErr.pathProbability),
         branchCount(symErr.branchCount) {}
 
@@ -168,10 +169,22 @@ public:
 
   double getBranchCount() const { return branchCount; }
 
-  ConstraintManager getConstraintsWithError() { return constraintsWithError; }
+  std::vector<ref<Expr> > &getConstraintsWithError() {
+    return constraintsWithError;
+  }
 
   void addErrorConstraint(ref<Expr> error) {
-    constraintsWithError.addErrorConstraint(error);
+    constraintsWithError.push_back(error);
+  }
+
+  void negateTopConstraint() {
+    if (!constraintsWithError.size())
+      return;
+
+    ref<Expr> constraint = constraintsWithError.back();
+    constraintsWithError.pop_back();
+
+    constraintsWithError.push_back(Expr::createIsZero(constraint));
   }
 
   /// print - Print the object content to stream

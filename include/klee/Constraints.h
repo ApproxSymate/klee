@@ -45,8 +45,6 @@ public:
 
   void addConstraint(ref<Expr> e);
 
-  void addErrorConstraint(ref<Expr> e);
-
   bool empty() const {
     return constraints.empty();
   }

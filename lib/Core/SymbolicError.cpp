@@ -220,7 +220,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
                                         ref<Expr> result,
                                         std::vector<Cell> &arguments,
                                         unsigned int phiResultWidth) {
-  ref<Expr> error =
+  std::pair<ref<Expr>, ref<Expr> > error =
       errorState->propagateError(executor, ki->inst, result, arguments);
 
   if (LoopBreaking) {
@@ -236,10 +236,14 @@ ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
       if (phiResultWidthList.find(ki) == phiResultWidthList.end()) {
         phiResultWidthList[ki] = phiResultWidth;
       }
-      tmpPhiResultInitError[ki] = error;
+      tmpPhiResultInitError[ki] = error.first;
     }
   }
-  return error;
+
+  if (!error.second.isNull()) {
+    constraintsWithError.push_back(error.second);
+  }
+  return error.first;
 }
 
 SymbolicError::~SymbolicError() {

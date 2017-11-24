@@ -416,7 +416,7 @@ void SpecialFunctionHandler::handleAssume(ExecutionState &state,
                                      Executor::User);
     }
   } else {
-    executor.addConstraint(state, e, ConstantExpr::create(0, Expr::Int8));
+    executor.addConstraint(state, e);
   }
 }
 

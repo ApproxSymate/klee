@@ -63,8 +63,10 @@ public:
                                      double bound, std::string name,
                                      std::vector<ref<Expr> > &_inputErrorList);
 
-  ref<Expr> propagateError(Executor *executor, llvm::Instruction *instr,
-                           ref<Expr> result, std::vector<Cell> &arguments);
+  std::pair<ref<Expr>, ref<Expr> > propagateError(Executor *executor,
+                                                  llvm::Instruction *instr,
+                                                  ref<Expr> result,
+                                                  std::vector<Cell> &arguments);
 
   std::string &getOutputString() { return outputString; }
 
@@ -80,11 +82,10 @@ public:
 
   bool hasStoredError(ref<Expr> address) const;
 
+  /// \brief Retrieve the error expression from the stored error expressions
+  /// map. This returns 0 when the address is not found.
   ref<Expr> executeLoad(llvm::Value *value, ref<Expr> base, ref<Expr> address,
                         ref<Expr> offset);
-
-  /// \brief Overwrite the contents of the current error state with another
-  void overwriteWith(ref<ErrorState> overwriting);
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;

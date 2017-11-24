@@ -165,10 +165,6 @@ void ConstraintManager::addConstraintInternal(ref<Expr> e) {
   }
 }
 
-void ConstraintManager::addErrorConstraint(ref<Expr> e) {
-  constraints.push_back(e);
-}
-
 void ConstraintManager::addConstraint(ref<Expr> e) {
   e = simplifyExpr(e);
   addConstraintInternal(e);
