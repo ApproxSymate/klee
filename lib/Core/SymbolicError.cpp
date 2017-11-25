@@ -250,8 +250,8 @@ SymbolicError::~SymbolicError() {
   nonExited.clear();
 }
 
-void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
-                                 ref<Expr> error) {
+void SymbolicError::executeStore(ref<Expr> address, ref<Expr> addressError,
+                                 ref<Expr> value, ref<Expr> error) {
     if (LoopBreaking && !writesStack.empty()) {
       // Record the error at each store at each iteration.
       if (llvm::isa<ConstantExpr>(address)) {
@@ -267,6 +267,13 @@ void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
       } else {
         assert(!"non-constant address");
       }
+    }
+
+    if (!llvm::isa<ConstantExpr>(addressError)) {
+      // Here we constraint the error of the address to be 0, since it is not
+      // approximable.
+      constraintsWithError.push_back(
+          EqExpr::create(ConstantExpr::create(0, Expr::Int8), addressError));
     }
     storeError(address, error);
 }

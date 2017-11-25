@@ -4152,6 +4152,7 @@ void Executor::executeMemoryOperation(
     ref<Expr> value /* undef if read */, ref<Expr> error /* undef if read */,
     KInstruction *target /* undef if write */) {
   ref<Expr> address = cell.value;
+  ref<Expr> addressError = cell.error;
   Expr::Width type = (isWrite ? value->getWidth() : 
                      getWidthForLLVMType(target->inst->getType()));
   unsigned bytes = Expr::getMinBytesForWidth(type);
@@ -4203,7 +4204,8 @@ void Executor::executeMemoryOperation(
         } else {
           ObjectState *wos = state.addressSpace.getWriteable(mo, os);
           wos->write(offset, value);
-          state.symbolicError->executeStore(address, value, error);
+          state.symbolicError->executeStore(address, addressError, value,
+                                            error);
         }
       } else {
         ref<Expr> result = os->read(offset, type);
@@ -4212,7 +4214,8 @@ void Executor::executeMemoryOperation(
           result = replaceReadWithSymbolic(state, result);
 
         ref<Expr> resultError = state.symbolicError->executeLoad(
-            target->inst->getOperand(0), mo->getBaseExpr(), address, offset);
+            target->inst->getOperand(0), mo->getBaseExpr(), address,
+            addressError, offset);
         bindLocal(target, state, result, resultError);
       }
 
@@ -4250,13 +4253,14 @@ void Executor::executeMemoryOperation(
         } else {
           ObjectState *wos = bound->addressSpace.getWriteable(mo, os);
           wos->write(mo->getOffsetExpr(address), value);
-          state.symbolicError->executeStore(address, value, error);
+          state.symbolicError->executeStore(address, addressError, value,
+                                            error);
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
         ref<Expr> resultError = state.symbolicError->executeLoad(
             target->inst->getOperand(0), mo->getBaseExpr(), address,
-            mo->getOffsetExpr(address));
+            addressError, mo->getOffsetExpr(address));
         bindLocal(target, *bound, result, resultError);
       }
     }
