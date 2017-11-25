@@ -152,15 +152,7 @@ public:
 
   ref<Expr> executeLoad(llvm::Value *addressValue, ref<Expr> base,
                         ref<Expr> address, ref<Expr> addressError,
-                        ref<Expr> offset) {
-    if (!llvm::isa<ConstantExpr>(addressError)) {
-      // Here we constraint the error of the address to be 0, since it is not
-      // approximable.
-      constraintsWithError.push_back(
-          EqExpr::create(ConstantExpr::create(0, Expr::Int8), addressError));
-    }
-    return errorState->executeLoad(addressValue, base, address, offset);
-  }
+                        ref<Expr> offset);
 
   void setKleeBoundErrorExpr(ref<Expr> error) { kleeBoundErrorExpr = error; }
 

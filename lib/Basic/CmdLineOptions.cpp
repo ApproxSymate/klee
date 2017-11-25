@@ -113,6 +113,12 @@ llvm::cl::opt<bool> LoopBreaking(
         "Enable loop breaking: effective only when -precision is specified"),
     llvm::cl::init(false));
 
+llvm::cl::opt<bool> ApproximableAddress(
+    "approximable-address",
+    llvm::cl::desc("Assumes addresses are approximable: never constrains "
+                   "errors of addresses in load/store operations to zero."),
+    llvm::cl::init(false));
+
 llvm::cl::opt<bool>
     UseAssignmentValidatingSolver("debug-assignment-validating-solver",
                                   llvm::cl::init(false));
