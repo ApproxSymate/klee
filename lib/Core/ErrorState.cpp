@@ -185,7 +185,6 @@ std::pair<ref<Expr>, ref<Expr> >
 ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
                            ref<Expr> result, std::vector<Cell> &arguments) {
   ref<Expr> nullExpr;
-
   switch (instr->getOpcode()) {
   case llvm::Instruction::PHI: {
     return std::pair<ref<Expr>, ref<Expr> >(arguments.at(0).error, nullExpr);
@@ -338,7 +337,6 @@ ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
   case llvm::Instruction::FCmp:
   case llvm::Instruction::ICmp: {
     llvm::CmpInst *ci = cast<llvm::CmpInst>(instr);
-    llvm::ICmpInst *ii = cast<llvm::ICmpInst>(ci);
 
     //(1 - ex)
     ref<Expr> lError = SubExpr::create(ConstantExpr::create(1, Expr::Int8),
@@ -362,61 +360,111 @@ ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
 
     ref<Expr> conditionWithError;
 
-    switch (ii->getPredicate()) {
-    case llvm::ICmpInst::ICMP_EQ: {
-      conditionWithError = EqExpr::create(leftMul, rightMul);
-      break;
+    if (llvm::ICmpInst *ii = llvm::dyn_cast<llvm::ICmpInst>(ci)) {
+      switch (ii->getPredicate()) {
+      case llvm::ICmpInst::ICMP_EQ: {
+        conditionWithError = EqExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      case llvm::ICmpInst::ICMP_NE: {
+        conditionWithError = NeExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      case llvm::ICmpInst::ICMP_UGT: {
+        conditionWithError = UgtExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      case llvm::ICmpInst::ICMP_UGE: {
+        conditionWithError = UgeExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      case llvm::ICmpInst::ICMP_ULT: {
+        conditionWithError = UltExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      case llvm::ICmpInst::ICMP_ULE: {
+        conditionWithError = UleExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      case llvm::ICmpInst::ICMP_SGT: {
+        conditionWithError = SgtExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      case llvm::ICmpInst::ICMP_SGE: {
+        conditionWithError = SgeExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      case llvm::ICmpInst::ICMP_SLT: {
+        conditionWithError = SltExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      case llvm::ICmpInst::ICMP_SLE: {
+        conditionWithError = SleExpr::create(leftMul, rightMul);
+        break;
+      }
+
+      default:
+        conditionWithError = ConstantExpr::create(1, Expr::Bool);
+        break;
+      }
+
+    } else if (llvm::FCmpInst *fi = llvm::dyn_cast<llvm::FCmpInst>(ci)) {
+      switch (fi->getPredicate()) {
+      case llvm::FCmpInst::FCMP_ORD: {
+        conditionWithError = ConstantExpr::create(1, Expr::Bool);
+        break;
+      }
+      case llvm::FCmpInst::FCMP_UNO: {
+        conditionWithError = ConstantExpr::create(0, Expr::Bool);
+        break;
+      }
+      case llvm::FCmpInst::FCMP_UEQ:
+      case llvm::FCmpInst::FCMP_OEQ: {
+        conditionWithError = EqExpr::create(leftMul, rightMul);
+        break;
+      }
+      case llvm::FCmpInst::FCMP_UGE:
+      case llvm::FCmpInst::FCMP_OGE: {
+        conditionWithError = SgeExpr::create(leftMul, rightMul);
+        break;
+      }
+      case llvm::FCmpInst::FCMP_ULT:
+      case llvm::FCmpInst::FCMP_OLT: {
+        conditionWithError = SltExpr::create(leftMul, rightMul);
+        break;
+      }
+      case llvm::FCmpInst::FCMP_ULE:
+      case llvm::FCmpInst::FCMP_OLE: {
+        conditionWithError = SleExpr::create(leftMul, rightMul);
+        break;
+      }
+      case llvm::FCmpInst::FCMP_UNE:
+      case llvm::FCmpInst::FCMP_ONE: {
+        conditionWithError = NeExpr::create(leftMul, rightMul);
+        break;
+      }
+      case llvm::FCmpInst::FCMP_FALSE: {
+        conditionWithError = ConstantExpr::create(0, Expr::Bool);
+        break;
+      }
+      case llvm::FCmpInst::FCMP_TRUE: {
+        conditionWithError = ConstantExpr::create(1, Expr::Bool);
+        break;
+      }
+      default:
+        assert(!"Invalid FCMP predicate!");
+      }
     }
 
-    case llvm::ICmpInst::ICMP_NE: {
-      conditionWithError = NeExpr::create(leftMul, rightMul);
-      break;
-    }
-
-    case llvm::ICmpInst::ICMP_UGT: {
-      conditionWithError = UgtExpr::create(leftMul, rightMul);
-      break;
-    }
-
-    case llvm::ICmpInst::ICMP_UGE: {
-      conditionWithError = UgeExpr::create(leftMul, rightMul);
-      break;
-    }
-
-    case llvm::ICmpInst::ICMP_ULT: {
-      conditionWithError = UltExpr::create(leftMul, rightMul);
-      break;
-    }
-
-    case llvm::ICmpInst::ICMP_ULE: {
-      conditionWithError = UleExpr::create(leftMul, rightMul);
-      break;
-    }
-
-    case llvm::ICmpInst::ICMP_SGT: {
-      conditionWithError = SgtExpr::create(leftMul, rightMul);
-      break;
-    }
-
-    case llvm::ICmpInst::ICMP_SGE: {
-      conditionWithError = SgeExpr::create(leftMul, rightMul);
-      break;
-    }
-
-    case llvm::ICmpInst::ICMP_SLT: {
-      conditionWithError = SltExpr::create(leftMul, rightMul);
-      break;
-    }
-
-    case llvm::ICmpInst::ICMP_SLE: {
-      conditionWithError = SleExpr::create(leftMul, rightMul);
-      break;
-    }
-
-    default:
-      conditionWithError = ConstantExpr::create(1, Expr::Bool);
-      break;
-    }
     return std::pair<ref<Expr>, ref<Expr> >(ConstantExpr::create(0, Expr::Int8),
                                             conditionWithError);
   }
