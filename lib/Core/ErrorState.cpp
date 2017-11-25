@@ -182,9 +182,11 @@ ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
 }
 
 std::pair<ref<Expr>, ref<Expr> >
-ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
+ErrorState::propagateError(Executor *executor, KInstruction *ki,
                            ref<Expr> result, std::vector<Cell> &arguments) {
   ref<Expr> nullExpr;
+  llvm::Instruction *instr = ki->inst;
+
   switch (instr->getOpcode()) {
   case llvm::Instruction::PHI: {
     return std::pair<ref<Expr>, ref<Expr> >(arguments.at(0).error, nullExpr);
@@ -499,10 +501,16 @@ ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
       return std::pair<ref<Expr>, ref<Expr> >(
           ConstantExpr::create(0, Expr::Int8), nullExpr);
   }
+  case llvm::Instruction::GetElementPtr: {
+    ref<Expr> error = arguments.at(0).error;
+    if (error.isNull()) {
+      error = ConstantExpr::create(0, Expr::Int8);
+    }
+    return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
+  }
   case llvm::Instruction::AShr:
   case llvm::Instruction::FPExt:
   case llvm::Instruction::FPTrunc:
-  case llvm::Instruction::GetElementPtr:
   case llvm::Instruction::LShr:
   case llvm::Instruction::Shl:
   case llvm::Instruction::SExt:

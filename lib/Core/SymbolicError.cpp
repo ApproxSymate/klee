@@ -221,7 +221,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
                                         std::vector<Cell> &arguments,
                                         unsigned int phiResultWidth) {
   std::pair<ref<Expr>, ref<Expr> > error =
-      errorState->propagateError(executor, ki->inst, result, arguments);
+      errorState->propagateError(executor, ki, result, arguments);
 
   if (LoopBreaking) {
     if (TripCounter::instance &&

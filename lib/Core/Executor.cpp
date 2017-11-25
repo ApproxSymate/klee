@@ -2417,14 +2417,20 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
   case Instruction::GetElementPtr: {
     KGEPInstruction *kgepi = static_cast<KGEPInstruction*>(ki);
-    ref<Expr> oldBase = eval(ki, 0, state).value;
-    ref<Expr> base = oldBase;
+    Cell oldBaseCell = eval(ki, 0, state);
+    ref<Expr> base = oldBaseCell.value;
+
+    std::vector<Cell> arguments;
+
+    arguments.push_back(oldBaseCell);
 
     for (std::vector< std::pair<unsigned, uint64_t> >::iterator 
            it = kgepi->indices.begin(), ie = kgepi->indices.end(); 
          it != ie; ++it) {
       uint64_t elementSize = it->second;
-      ref<Expr> index = eval(ki, it->first, state).value;
+      Cell c = eval(ki, it->first, state);
+      ref<Expr> index = c.value;
+      arguments.push_back(c);
       base = AddExpr::create(base,
                              MulExpr::create(Expr::createSExtToPointerWidth(index),
                                              Expr::createPointer(elementSize)));
@@ -2432,12 +2438,6 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     if (kgepi->offset)
       base = AddExpr::create(base,
                              Expr::createPointer(kgepi->offset));
-
-    std::vector<Cell> arguments;
-    Cell oldBaseCell;
-    oldBaseCell.value = oldBase;
-    oldBaseCell.error = ConstantExpr::create(0, Expr::Int8);
-    arguments.push_back(oldBaseCell);
 
     bindLocal(ki, state, base,
               state.symbolicError->propagateError(this, ki, base, arguments));
