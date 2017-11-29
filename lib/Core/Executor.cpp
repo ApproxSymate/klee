@@ -2956,8 +2956,15 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     const Cell &c = eval(ki, 0, state);
 
     if (PrecisionError) {
-      // We simply assume equality
+      SIToFPInst *fi = cast<SIToFPInst>(i);
+      Expr::Width resultType = getWidthForLLVMType(fi->getType());
       ref<Expr> result = c.value;
+      Expr::Width resultInputType = result->getWidth();
+      if (resultInputType < resultType) {
+        result = SExtExpr::create(result, resultType);
+      } else if (resultInputType > resultType) {
+        result = ExtractExpr::create(result, 0, resultType);
+      }
       std::vector<Cell> arguments;
       arguments.push_back(c);
       bindLocal(ki, state, result, state.symbolicError->propagateError(
