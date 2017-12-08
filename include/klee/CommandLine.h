@@ -73,6 +73,8 @@ extern llvm::cl::opt<bool> DebugPrecision;
 
 extern llvm::cl::opt<bool> LoopBreaking;
 
+extern llvm::cl::opt<bool> ExecuteFloatAsInt;
+
 #ifdef ENABLE_METASMT
 
 enum MetaSMTBackendType
