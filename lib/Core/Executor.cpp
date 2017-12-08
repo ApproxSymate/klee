@@ -2055,7 +2055,19 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
     ref<Expr> left = lCell.value;
     ref<Expr> right = rCell.value;
-    ref<Expr> result = SDivExpr::create(left, right);
+    ref<Expr> result;
+
+    if (PrecisionError && ExecuteFloatAsInt) {
+      const Array *array = arrayCache.CreateArray("scaling", Expr::Int8);
+      ref<Expr> scalingVal = ReadExpr::create(
+          UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
+      ref<Expr> mulExpr =
+          MulExpr::create(left, SExtExpr::create(scalingVal, left->getWidth()));
+      right->dump();
+      result = SDivExpr::create(mulExpr, right);
+    } else {
+      result = SDivExpr::create(left, right);
+    }
 
     std::vector<Cell> arguments;
     arguments.push_back(lCell);
