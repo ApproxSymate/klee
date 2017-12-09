@@ -432,6 +432,11 @@ ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
         conditionWithError = EqExpr::create(leftMul, rightMul);
         break;
       }
+      case llvm::FCmpInst::FCMP_UGT:
+      case llvm::FCmpInst::FCMP_OGT: {
+        conditionWithError = SgtExpr::create(leftMul, rightMul);
+        break;
+      }
       case llvm::FCmpInst::FCMP_UGE:
       case llvm::FCmpInst::FCMP_OGE: {
         conditionWithError = SgeExpr::create(leftMul, rightMul);
