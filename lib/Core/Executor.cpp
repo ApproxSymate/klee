@@ -2063,7 +2063,6 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
           UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
       ref<Expr> mulExpr =
           MulExpr::create(left, SExtExpr::create(scalingVal, left->getWidth()));
-      right->dump();
       result = SDivExpr::create(mulExpr, right);
     } else {
       result = SDivExpr::create(left, right);
