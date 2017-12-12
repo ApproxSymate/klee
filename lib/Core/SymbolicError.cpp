@@ -221,7 +221,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
                                         std::vector<Cell> &arguments,
                                         unsigned int phiResultWidth) {
   std::pair<ref<Expr>, ref<Expr> > error =
-      errorState->propagateError(executor, ki->inst, result, arguments);
+      errorState->propagateError(executor, ki, result, arguments);
 
   if (LoopBreaking) {
     if (TripCounter::instance &&
@@ -250,8 +250,20 @@ SymbolicError::~SymbolicError() {
   nonExited.clear();
 }
 
-void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
-                                 ref<Expr> error) {
+ref<Expr> SymbolicError::executeLoad(llvm::Value *addressValue, ref<Expr> base,
+                                     ref<Expr> address, ref<Expr> addressError,
+                                     ref<Expr> offset) {
+  if (!ApproximableAddress && !llvm::isa<ConstantExpr>(addressError)) {
+    // Here we constraint the error of the address to be 0, since it is not
+    // approximable.
+    constraintsWithError.push_back(
+        EqExpr::create(ConstantExpr::create(0, Expr::Int8), addressError));
+  }
+  return errorState->executeLoad(addressValue, base, address, offset);
+}
+
+void SymbolicError::executeStore(ref<Expr> address, ref<Expr> addressError,
+                                 ref<Expr> value, ref<Expr> error) {
     if (LoopBreaking && !writesStack.empty()) {
       // Record the error at each store at each iteration.
       if (llvm::isa<ConstantExpr>(address)) {
@@ -267,6 +279,13 @@ void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
       } else {
         assert(!"non-constant address");
       }
+    }
+
+    if (!ApproximableAddress && !llvm::isa<ConstantExpr>(addressError)) {
+      // Here we constraint the error of the address to be 0, since it is not
+      // approximable.
+      constraintsWithError.push_back(
+          EqExpr::create(ConstantExpr::create(0, Expr::Int8), addressError));
     }
     storeError(address, error);
 }

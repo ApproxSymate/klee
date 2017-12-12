@@ -2417,14 +2417,20 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
   case Instruction::GetElementPtr: {
     KGEPInstruction *kgepi = static_cast<KGEPInstruction*>(ki);
-    ref<Expr> oldBase = eval(ki, 0, state).value;
-    ref<Expr> base = oldBase;
+    Cell oldBaseCell = eval(ki, 0, state);
+    ref<Expr> base = oldBaseCell.value;
+
+    std::vector<Cell> arguments;
+
+    arguments.push_back(oldBaseCell);
 
     for (std::vector< std::pair<unsigned, uint64_t> >::iterator 
            it = kgepi->indices.begin(), ie = kgepi->indices.end(); 
          it != ie; ++it) {
       uint64_t elementSize = it->second;
-      ref<Expr> index = eval(ki, it->first, state).value;
+      Cell c = eval(ki, it->first, state);
+      ref<Expr> index = c.value;
+      arguments.push_back(c);
       base = AddExpr::create(base,
                              MulExpr::create(Expr::createSExtToPointerWidth(index),
                                              Expr::createPointer(elementSize)));
@@ -2432,12 +2438,6 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     if (kgepi->offset)
       base = AddExpr::create(base,
                              Expr::createPointer(kgepi->offset));
-
-    std::vector<Cell> arguments;
-    Cell oldBaseCell;
-    oldBaseCell.value = oldBase;
-    oldBaseCell.error = ConstantExpr::create(0, Expr::Int8);
-    arguments.push_back(oldBaseCell);
 
     bindLocal(ki, state, base,
               state.symbolicError->propagateError(this, ki, base, arguments));
@@ -4152,6 +4152,7 @@ void Executor::executeMemoryOperation(
     ref<Expr> value /* undef if read */, ref<Expr> error /* undef if read */,
     KInstruction *target /* undef if write */) {
   ref<Expr> address = cell.value;
+  ref<Expr> addressError = cell.error;
   Expr::Width type = (isWrite ? value->getWidth() : 
                      getWidthForLLVMType(target->inst->getType()));
   unsigned bytes = Expr::getMinBytesForWidth(type);
@@ -4203,7 +4204,8 @@ void Executor::executeMemoryOperation(
         } else {
           ObjectState *wos = state.addressSpace.getWriteable(mo, os);
           wos->write(offset, value);
-          state.symbolicError->executeStore(address, value, error);
+          state.symbolicError->executeStore(address, addressError, value,
+                                            error);
         }
       } else {
         ref<Expr> result = os->read(offset, type);
@@ -4212,7 +4214,8 @@ void Executor::executeMemoryOperation(
           result = replaceReadWithSymbolic(state, result);
 
         ref<Expr> resultError = state.symbolicError->executeLoad(
-            target->inst->getOperand(0), mo->getBaseExpr(), address, offset);
+            target->inst->getOperand(0), mo->getBaseExpr(), address,
+            addressError, offset);
         bindLocal(target, state, result, resultError);
       }
 
@@ -4250,13 +4253,14 @@ void Executor::executeMemoryOperation(
         } else {
           ObjectState *wos = bound->addressSpace.getWriteable(mo, os);
           wos->write(mo->getOffsetExpr(address), value);
-          state.symbolicError->executeStore(address, value, error);
+          state.symbolicError->executeStore(address, addressError, value,
+                                            error);
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
         ref<Expr> resultError = state.symbolicError->executeLoad(
             target->inst->getOperand(0), mo->getBaseExpr(), address,
-            mo->getOffsetExpr(address));
+            addressError, mo->getOffsetExpr(address));
         bindLocal(target, *bound, result, resultError);
       }
     }

@@ -139,7 +139,8 @@ public:
 
   std::string &getOutputString() { return errorState->getOutputString(); }
 
-  void executeStore(ref<Expr> address, ref<Expr> value, ref<Expr> error);
+  void executeStore(ref<Expr> address, ref<Expr> addressError, ref<Expr> value,
+                    ref<Expr> error);
 
   void storeError(ref<Expr> address, ref<Expr> error) {
     errorState->executeStoreSimple(address, error);
@@ -150,9 +151,8 @@ public:
   }
 
   ref<Expr> executeLoad(llvm::Value *addressValue, ref<Expr> base,
-                        ref<Expr> address, ref<Expr> offset) {
-    return errorState->executeLoad(addressValue, base, address, offset);
-  }
+                        ref<Expr> address, ref<Expr> addressError,
+                        ref<Expr> offset);
 
   void setKleeBoundErrorExpr(ref<Expr> error) { kleeBoundErrorExpr = error; }
 

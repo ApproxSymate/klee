@@ -182,9 +182,11 @@ ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
 }
 
 std::pair<ref<Expr>, ref<Expr> >
-ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
+ErrorState::propagateError(Executor *executor, KInstruction *ki,
                            ref<Expr> result, std::vector<Cell> &arguments) {
   ref<Expr> nullExpr;
+  llvm::Instruction *instr = ki->inst;
+
   switch (instr->getOpcode()) {
   case llvm::Instruction::PHI: {
     return std::pair<ref<Expr>, ref<Expr> >(arguments.at(0).error, nullExpr);
@@ -504,10 +506,96 @@ ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
       return std::pair<ref<Expr>, ref<Expr> >(
           ConstantExpr::create(0, Expr::Int8), nullExpr);
   }
+  case llvm::Instruction::GetElementPtr: {
+    Cell oldBaseCell = arguments.at(0);
+    ref<Expr> base = oldBaseCell.value;
+    ref<Expr> error = oldBaseCell.error;
+    ref<Expr> errorConstraint;
+
+    KGEPInstruction *kgepi = static_cast<KGEPInstruction *>(ki);
+    unsigned i = 1;
+    for (std::vector<std::pair<unsigned, uint64_t> >::iterator
+             it = kgepi->indices.begin(),
+             ie = kgepi->indices.end();
+         it != ie; ++it) {
+      uint64_t elementSize = it->second;
+      Cell c = arguments.at(i);
+      llvm::Value *indexValue = instr->getOperand(i);
+      ref<Expr> index = c.value;
+      ref<Expr> indexError = c.error;
+      ref<Expr> mulRValue = Expr::createPointer(elementSize);
+
+      if (indexError.isNull()) {
+        indexError = getError(executor, index, indexValue);
+      }
+
+      if (!ApproximableAddress && !llvm::isa<ConstantExpr>(indexError)) {
+        ref<Expr> indexErrorConstraint =
+            EqExpr::create(ConstantExpr::create(0, Expr::Int8), indexError);
+        if (errorConstraint.isNull()) {
+          errorConstraint = indexErrorConstraint;
+        } else {
+          errorConstraint =
+              AndExpr::create(errorConstraint, indexErrorConstraint);
+        }
+      }
+
+      ref<Expr> lError = error;
+      ref<Expr> lValue = base;
+      ref<Expr> rError = indexError;
+      ref<Expr> rValue =
+          MulExpr::create(Expr::createSExtToPointerWidth(index), mulRValue);
+
+      base = AddExpr::create(base, rValue);
+
+      ref<Expr> extendedLeft = lError;
+      if (lError->getWidth() != lValue->getWidth()) {
+        extendedLeft = ZExtExpr::create(lError, lValue->getWidth());
+      }
+      ref<Expr> extendedRight = rError;
+      if (rError->getWidth() != rValue->getWidth()) {
+        extendedRight = ZExtExpr::create(rError, rValue->getWidth());
+      }
+      ref<Expr> errorLeft = MulExpr::create(extendedLeft, lValue);
+      ref<Expr> errorRight = MulExpr::create(extendedRight, rValue);
+      ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
+
+      error = ExtractExpr::create(
+          error->isZero() ? error : UDivExpr::create(resultError, error), 0,
+          Expr::Int8);
+      i++;
+    }
+    if (kgepi->offset) {
+      ref<Expr> lError = error;
+      ref<Expr> lValue = base;
+      ref<Expr> rError = ConstantExpr::create(0, Expr::Int8);
+      ref<Expr> rValue = Expr::createPointer(kgepi->offset);
+
+      ref<Expr> extendedLeft = lError;
+      if (lError->getWidth() != lValue->getWidth()) {
+        extendedLeft = ZExtExpr::create(lError, lValue->getWidth());
+      }
+      ref<Expr> extendedRight = rError;
+      if (rError->getWidth() != rValue->getWidth()) {
+        extendedRight = ZExtExpr::create(rError, rValue->getWidth());
+      }
+      ref<Expr> errorLeft = MulExpr::create(extendedLeft, lValue);
+      ref<Expr> errorRight = MulExpr::create(extendedRight, rValue);
+      ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
+
+      error = ExtractExpr::create(
+          error->isZero() ? error : UDivExpr::create(resultError, error), 0,
+          Expr::Int8);
+    }
+
+    if (error.isNull()) {
+      error = ConstantExpr::create(0, Expr::Int8);
+    }
+    return std::pair<ref<Expr>, ref<Expr> >(error, errorConstraint);
+  }
   case llvm::Instruction::AShr:
   case llvm::Instruction::FPExt:
   case llvm::Instruction::FPTrunc:
-  case llvm::Instruction::GetElementPtr:
   case llvm::Instruction::LShr:
   case llvm::Instruction::Shl:
   case llvm::Instruction::SExt:

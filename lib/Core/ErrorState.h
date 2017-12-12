@@ -14,6 +14,7 @@
 #include "klee/Expr.h"
 #include "klee/util/ArrayCache.h"
 #include "klee/Internal/Module/Cell.h"
+#include "klee/Internal/Module/KInstruction.h"
 
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Instructions.h"
@@ -64,7 +65,7 @@ public:
                                      std::vector<ref<Expr> > &_inputErrorList);
 
   std::pair<ref<Expr>, ref<Expr> > propagateError(Executor *executor,
-                                                  llvm::Instruction *instr,
+                                                  KInstruction *ki,
                                                   ref<Expr> result,
                                                   std::vector<Cell> &arguments);
 
