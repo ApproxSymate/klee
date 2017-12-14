@@ -73,7 +73,7 @@ extern llvm::cl::opt<bool> DebugPrecision;
 
 extern llvm::cl::opt<bool> LoopBreaking;
 
-extern llvm::cl::opt<bool> ExecuteFloatAsInt;
+extern llvm::cl::opt<bool> Scaling;
 
 #ifdef ENABLE_METASMT
 

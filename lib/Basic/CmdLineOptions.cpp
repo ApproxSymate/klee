@@ -117,11 +117,11 @@ llvm::cl::opt<bool>
     UseAssignmentValidatingSolver("debug-assignment-validating-solver",
                                   llvm::cl::init(false));
 
-llvm::cl::opt<bool>
-ExecuteFloatAsInt("execute-float-as-int",
-                  llvm::cl::desc("Switch on numerical precision analysis "
-                                 "techniques used for floating point"),
-                  llvm::cl::init(false));
+llvm::cl::opt<bool> Scaling(
+    "scaling",
+    llvm::cl::desc(
+        "Scale numerator of divisions to prevent rounding the result to zero"),
+    llvm::cl::init(false));
 
 #ifdef ENABLE_METASMT
 

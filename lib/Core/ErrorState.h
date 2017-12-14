@@ -90,6 +90,9 @@ public:
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;
 
+  // Add to constraint lists the constraint scalingVar != 0
+  ref<Expr> getScalingConstraint();
+
   /// dump - Print the object content to stderr
   void dump() const {
     print(llvm::errs());

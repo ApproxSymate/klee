@@ -2038,12 +2038,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
     ref<Expr> left = lCell.value;
     ref<Expr> right = rCell.value;
-    ref<Expr> result;
+    ref<Expr> result = UDivExpr::create(left, right);
 
-    /* When float code is being executed as int, we want to avoid possible division by zero errors that occur when the numerator and denominator are both constatns and the numerator is smaller than the denominator (eg- 5/10 would be 0.5 in float but 0 in int). Therefore when the result of the division zero, scale the numerator by a non-zero value. If the numerator is already zero, then this should still result in the numerator being zero.*/
-    if (PrecisionError && ExecuteFloatAsInt) {
-      result = UDivExpr::create(left, right);
-
+    /* When float code is being executed as int, we want to avoid possible
+     * division by zero errors that occur when the numerator and denominator are
+     * both constatns and the numerator is smaller than the denominator (eg-
+     * 5/10 would be 0.5 in float but 0 in int). Therefore when the result of
+     * the division zero, scale the numerator by a non-zero value. If the
+     * numerator is already zero, then this should still result in the numerator
+     * being zero.*/
+    if (PrecisionError && Scaling) {
       if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(result)) {
         if (cp->getZExtValue() == 0) {
           const Array *array = arrayCache.CreateArray("scaling", Expr::Int8);
@@ -2055,8 +2059,6 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
           result = UDivExpr::create(mulExpr, right);
         }
       }
-    } else {
-      result = UDivExpr::create(left, right);
     }
 
     std::vector<Cell> arguments;
@@ -2074,11 +2076,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
     ref<Expr> left = lCell.value;
     ref<Expr> right = rCell.value;
-    ref<Expr> result;
+    ref<Expr> result = SDivExpr::create(left, right);
 
-    if (PrecisionError && ExecuteFloatAsInt) {
-      result = SDivExpr::create(left, right);
-
+    if (PrecisionError && Scaling) {
       if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(result)) {
         if (cp->getZExtValue() == 0) {
           const Array *array = arrayCache.CreateArray("scaling", Expr::Int8);
@@ -2090,8 +2090,6 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
           result = SDivExpr::create(mulExpr, right);
         }
       }
-    } else {
-      result = SDivExpr::create(left, right);
     }
 
     std::vector<Cell> arguments;
