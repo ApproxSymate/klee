@@ -83,7 +83,7 @@ ExecutionState::ExecutionState(KFunction *kf) :
 	symbolicError(new SymbolicError()) {
   pushFrame(0, kf);
   if (PrecisionError && Scaling) {
-    ref<Expr> scalingConstraint = symbolicError->getSymbolicScalingConstraint();
+    ref<Expr> scalingConstraint = symbolicError->getScalingConstraint();
     addConstraint(scalingConstraint);
   }
 }

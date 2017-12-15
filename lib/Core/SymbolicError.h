@@ -196,7 +196,7 @@ public:
     llvm::errs() << "\n";
   }
 
-  ref<Expr> getSymbolicScalingConstraint() {
+  ref<Expr> getScalingConstraint() {
     ref<Expr> scalingConstraint = errorState->getScalingConstraint();
     addErrorConstraint(scalingConstraint);
     return scalingConstraint;
