@@ -117,6 +117,12 @@ llvm::cl::opt<bool>
     UseAssignmentValidatingSolver("debug-assignment-validating-solver",
                                   llvm::cl::init(false));
 
+llvm::cl::opt<bool> Scaling(
+    "scaling",
+    llvm::cl::desc(
+        "Scale numerator of divisions to prevent rounding the result to zero"),
+    llvm::cl::init(false));
+
 #ifdef ENABLE_METASMT
 
 #ifdef METASMT_DEFAULT_BACKEND_IS_BTOR

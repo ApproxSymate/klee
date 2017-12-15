@@ -756,3 +756,10 @@ void ErrorState::print(llvm::raw_ostream &os) const {
     }
   }
 }
+
+ref<Expr> ErrorState::getScalingConstraint() {
+  const Array *array = errorArrayCache.CreateArray("scaling", Expr::Int8);
+  ref<Expr> scalingVal = ReadExpr::create(
+      UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
+  return NeExpr::create(scalingVal, ConstantExpr::create(0, Expr::Int8));
+}

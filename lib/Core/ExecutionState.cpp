@@ -9,6 +9,7 @@
 
 #include "SymbolicError.h"
 #include "klee/ExecutionState.h"
+#include "klee/CommandLine.h"
 
 #include "klee/Internal/Module/Cell.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
@@ -81,6 +82,10 @@ ExecutionState::ExecutionState(KFunction *kf) :
     ptreeNode(0),
 	symbolicError(new SymbolicError()) {
   pushFrame(0, kf);
+  if (PrecisionError && Scaling) {
+    ref<Expr> scalingConstraint = symbolicError->getScalingConstraint();
+    addConstraint(scalingConstraint);
+  }
 }
 
 ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)

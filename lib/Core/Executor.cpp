@@ -2040,6 +2040,27 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> right = rCell.value;
     ref<Expr> result = UDivExpr::create(left, right);
 
+    /* When float code is being executed as int, we want to avoid possible
+     * division by zero errors that occur when the numerator and denominator are
+     * both constatns and the numerator is smaller than the denominator (eg-
+     * 5/10 would be 0.5 in float but 0 in int). Therefore when the result of
+     * the division zero, scale the numerator by a non-zero value. If the
+     * numerator is already zero, then this should still result in the numerator
+     * being zero.*/
+    if (PrecisionError && Scaling) {
+      if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(result)) {
+        if (cp->getZExtValue() == 0) {
+          const Array *array = arrayCache.CreateArray("scaling", Expr::Int8);
+          ref<Expr> scalingVal =
+              ReadExpr::create(UpdateList(array, 0),
+                               ConstantExpr::create(0, array->getDomain()));
+          ref<Expr> mulExpr = MulExpr::create(
+              left, SExtExpr::create(scalingVal, left->getWidth()));
+          result = UDivExpr::create(mulExpr, right);
+        }
+      }
+    }
+
     std::vector<Cell> arguments;
     arguments.push_back(lCell);
     arguments.push_back(rCell);
@@ -2056,6 +2077,20 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> left = lCell.value;
     ref<Expr> right = rCell.value;
     ref<Expr> result = SDivExpr::create(left, right);
+
+    if (PrecisionError && Scaling) {
+      if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(result)) {
+        if (cp->getZExtValue() == 0) {
+          const Array *array = arrayCache.CreateArray("scaling", Expr::Int8);
+          ref<Expr> scalingVal =
+              ReadExpr::create(UpdateList(array, 0),
+                               ConstantExpr::create(0, array->getDomain()));
+          ref<Expr> mulExpr = MulExpr::create(
+              left, SExtExpr::create(scalingVal, left->getWidth()));
+          result = SDivExpr::create(mulExpr, right);
+        }
+      }
+    }
 
     std::vector<Cell> arguments;
     arguments.push_back(lCell);
