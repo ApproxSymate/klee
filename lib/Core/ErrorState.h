@@ -34,7 +34,7 @@ private:
   ref<Expr> getError(Executor *executor, ref<Expr> valueExpr,
                      llvm::Value *value = 0);
 
-  ArrayCache errorArrayCache;
+  ArrayCache *errorArrayCache;
 
   std::string outputString;
 
@@ -45,9 +45,11 @@ private:
   std::vector<ref<Expr> > inputErrorList;
 
 public:
-  ErrorState() : refCount(0) {}
+  ErrorState(ArrayCache *arrayCache)
+      : refCount(0), errorArrayCache(arrayCache) {}
 
-  ErrorState(ErrorState &errorState) : refCount(0) {
+  ErrorState(ErrorState &errorState)
+      : refCount(0), errorArrayCache(errorState.errorArrayCache) {
     declaredInputError = errorState.declaredInputError;
     storedError = errorState.storedError;
     inputErrorList = errorState.inputErrorList;

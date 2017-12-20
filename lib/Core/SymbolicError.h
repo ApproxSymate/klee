@@ -71,8 +71,9 @@ class SymbolicError {
   int branchCount;
 
 public:
-  SymbolicError() : pathProbability(-1.0), branchCount(0) {
-    errorState = ref<ErrorState>(new ErrorState());
+  SymbolicError(ArrayCache *arrayCache)
+      : pathProbability(-1.0), branchCount(0) {
+    errorState = ref<ErrorState>(new ErrorState(arrayCache));
   }
 
   SymbolicError(SymbolicError &symErr)
