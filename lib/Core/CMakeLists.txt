@@ -11,6 +11,8 @@ klee_add_component(kleeCore
   CallPathManager.cpp
   Context.cpp
   CoreStats.cpp
+  EdgeProbability.cpp
+  ErrorState.cpp
   ExecutionState.cpp
   Executor.cpp
   ExecutorTimers.cpp
@@ -19,12 +21,15 @@ klee_add_component(kleeCore
   ImpliedValue.cpp
   Memory.cpp
   MemoryManager.cpp
+  PrettyExpressionBuilder.cpp
   PTree.cpp
   Searcher.cpp
   SeedInfo.cpp
   SpecialFunctionHandler.cpp
   StatsTracker.cpp
+  SymbolicError.cpp
   TimingSolver.cpp
+  TripCounter.cpp
   UserSearcher.cpp
 )
 

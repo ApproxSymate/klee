@@ -28,6 +28,8 @@ klee_add_component(kleaverSolver
   ValidatingSolver.cpp
   Z3Builder.cpp
   Z3Solver.cpp
+  Z3ErrorBuilder.cpp
+  Z3ErrorSolver.cpp
 )
 
 set(LLVM_COMPONENTS
