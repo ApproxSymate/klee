@@ -153,7 +153,7 @@ private:
   ExecutionState() : ptreeNode(0), symbolicError(0) {}
 
 public:
-  ExecutionState(KFunction *kf);
+  ExecutionState(KFunction *kf, ArrayCache *arrayCache);
 
   // XXX total hack, just used to make a state so solver can
   // use on structure

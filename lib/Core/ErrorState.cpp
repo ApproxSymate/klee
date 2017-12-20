@@ -44,7 +44,7 @@ ref<Expr> ErrorState::getError(Executor *executor, ref<Expr> valueExpr,
           "_unspecified_error_" +
           llvm::dyn_cast<ReadExpr>(concatExpr->getLeft())->updates.root->name);
       const Array *newErrorArray =
-          errorArrayCache.CreateArray(errorName, Expr::Int8);
+          errorArrayCache->CreateArray(errorName, Expr::Int8);
       UpdateList ul(newErrorArray, 0);
       arrayErrorArrayMap[concatArray] = newErrorArray;
       ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
@@ -60,7 +60,7 @@ ref<Expr> ErrorState::getError(Executor *executor, ref<Expr> valueExpr,
       std::string errorName("_unspecified_error_" +
                             readExpr->updates.root->name);
       const Array *newErrorArray =
-          errorArrayCache.CreateArray(errorName, Expr::Int8);
+          errorArrayCache->CreateArray(errorName, Expr::Int8);
       UpdateList ul(newErrorArray, 0);
       arrayErrorArrayMap[readArray] = newErrorArray;
       ret = ReadExpr::create(ul, ConstantExpr::alloc(0, Expr::Int8));
@@ -126,7 +126,7 @@ ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
   errorVarStream.flush();
 
   ref<Expr> errorVarExpr = ReadExpr::create(
-      UpdateList(errorArrayCache.CreateArray(errorVar, Expr::Int8), 0),
+      UpdateList(errorArrayCache->CreateArray(errorVar, Expr::Int8), 0),
       ConstantExpr::createPointer(0));
 
   ret.addConstraint(EqExpr::create(errorVarExpr, error));
@@ -657,7 +657,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
           offset = Expr::createPointer(0);
         }
         const Array *newErrorArray =
-            errorArrayCache.CreateArray(errorName, Expr::Int8);
+            errorArrayCache->CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
         error = ReadExpr::create(ul, offset);
       } else if (!errorName.compare(0, array_prefix16.size(), array_prefix16)) {
@@ -674,7 +674,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
           offset = Expr::createPointer(0);
         }
         const Array *newErrorArray =
-            errorArrayCache.CreateArray(errorName, Expr::Int8);
+            errorArrayCache->CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
         error = ReadExpr::create(ul, offset);
       } else if (!errorName.compare(0, array_prefix32.size(), array_prefix32)) {
@@ -691,7 +691,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
           offset = Expr::createPointer(0);
         }
         const Array *newErrorArray =
-            errorArrayCache.CreateArray(errorName, Expr::Int8);
+            errorArrayCache->CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
         error = ReadExpr::create(ul, offset);
       } else if (!errorName.compare(0, array_prefix64.size(), array_prefix64)) {
@@ -708,7 +708,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
           offset = Expr::createPointer(0);
         }
         const Array *newErrorArray =
-            errorArrayCache.CreateArray(errorName, Expr::Int8);
+            errorArrayCache->CreateArray(errorName, Expr::Int8);
         UpdateList ul(newErrorArray, 0);
         error = ReadExpr::create(ul, offset);
       } else {
@@ -758,7 +758,7 @@ void ErrorState::print(llvm::raw_ostream &os) const {
 }
 
 ref<Expr> ErrorState::getScalingConstraint() {
-  const Array *array = errorArrayCache.CreateArray("scaling", Expr::Int8);
+  const Array *array = errorArrayCache->CreateArray("scaling", Expr::Int8);
   ref<Expr> scalingVal = ReadExpr::create(
       UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
   return NeExpr::create(scalingVal, ConstantExpr::create(0, Expr::Int8));

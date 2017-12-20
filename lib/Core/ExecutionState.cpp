@@ -68,19 +68,10 @@ StackFrame::~StackFrame() {
 
 /***/
 
-ExecutionState::ExecutionState(KFunction *kf) :
-    pc(kf->instructions),
-    prevPC(pc),
-
-    queryCost(0.), 
-    weight(1),
-    depth(0),
-
-    instsSinceCovNew(0),
-    coveredNew(false),
-    forkDisabled(false),
-    ptreeNode(0),
-	symbolicError(new SymbolicError()) {
+ExecutionState::ExecutionState(KFunction *kf, ArrayCache *arrayCache)
+    : pc(kf->instructions), prevPC(pc), queryCost(0.), weight(1), depth(0),
+      instsSinceCovNew(0), coveredNew(false), forkDisabled(false), ptreeNode(0),
+      symbolicError(new SymbolicError(arrayCache)) {
   pushFrame(0, kf);
   if (PrecisionError && Scaling) {
     ref<Expr> scalingConstraint = symbolicError->getScalingConstraint();

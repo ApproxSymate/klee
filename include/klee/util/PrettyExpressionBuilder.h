@@ -116,9 +116,6 @@ class PrettyExpressionBuilder {
 
 public:
   static std::string construct(ref<Expr> e);
-
-  static std::string constructQuery(ConstraintManager &constraints,
-                                    ref<Expr> e);
 };
 
 /// \brief Output function name to the output stream
