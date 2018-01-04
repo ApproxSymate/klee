@@ -502,8 +502,8 @@ void KleeHandler::processTestCase(const ExecutionState &state,
     int branchCount = state.symbolicError->getBranchCount();
     if (pathProbability > 0) {
       llvm::raw_ostream *probFile = openTestFile("prob", id);
-      *probFile << "(pathLength, pathProbability) = (" << branchCount << ", "
-                << pathProbability << ")\n";
+      *probFile << "(pathLength, pathProbability), " << id << "\n"
+                << branchCount << ", " << pathProbability;
       delete probFile;
     }
 
@@ -511,7 +511,6 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       llvm::raw_ostream *f = openTestFile("kquery_precision_error", id);
       std::vector<ref<Expr> > &constraintsWithError =
           state.symbolicError->getConstraintsWithError();
-      *f << "Path conditions with error:";
       for (std::vector<ref<Expr> >::const_iterator
                it = constraintsWithError.begin(),
                ie = constraintsWithError.end();
