@@ -40,7 +40,7 @@ private:
 
   std::map<uintptr_t, ref<Expr> > declaredInputError;
 
-  std::map<uintptr_t, ref<Expr> > storedError;
+  std::map<uintptr_t, std::pair<ref<Expr>, ref<Expr> > > storedError;
 
   std::vector<ref<Expr> > inputErrorList;
 
@@ -74,11 +74,12 @@ public:
 
   void registerInputError(ref<Expr> error);
 
-  void executeStoreSimple(ref<Expr> address, ref<Expr> error);
+  void executeStoreSimple(ref<Expr> address, ref<Expr> error,
+                          ref<Expr> valueWithError);
 
   void declareInputError(ref<Expr> address, ref<Expr> error);
 
-  ref<Expr> retrieveStoredError(ref<Expr> address) const;
+  std::pair<ref<Expr>, ref<Expr> > retrieveStoredError(ref<Expr> address) const;
 
   ref<Expr> retrieveDeclaredInputError(ref<Expr> address) const;
 
@@ -86,8 +87,10 @@ public:
 
   /// \brief Retrieve the error expression from the stored error expressions
   /// map. This returns 0 when the address is not found.
-  ref<Expr> executeLoad(llvm::Value *value, ref<Expr> base, ref<Expr> address,
-                        ref<Expr> offset);
+  std::pair<ref<Expr>, ref<Expr> > executeLoad(llvm::Value *value,
+                                               ref<Expr> base,
+                                               ref<Expr> address,
+                                               ref<Expr> offset);
 
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;

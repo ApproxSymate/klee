@@ -1120,10 +1120,16 @@ const Cell& Executor::eval(KInstruction *ki, unsigned index,
   if (vnumber < 0) {
     unsigned index = -vnumber - 2;
     Cell &ret = kmodule->constantTable[index];
-    if (state.symbolicError->checkStoredError(ret.value))
-      ret.error = state.symbolicError->retrieveStoredError(ret.value);
-    else
+    if (state.symbolicError->checkStoredError(ret.value)) {
+      std::pair<ref<Expr>, ref<Expr> > pair =
+          state.symbolicError->retrieveStoredError(ret.value);
+      ret.error = pair.first;
+      ret.valueWithError = pair.second;
+    } else {
+      ref<Expr> nullExpr;
       ret.error = ConstantExpr::create(0, Expr::Int8);
+      ret.valueWithError = nullExpr;
+    }
     return ret;
   } else {
     unsigned index = vnumber;
@@ -1331,10 +1337,12 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
       // size. This happens to work fir x86-32 and x86-64, however.
       Expr::Width WordSize = Context::get().getPointerWidth();
       if (WordSize == Expr::Int32) {
-        executeMemoryOperation(state, true, arguments[0],
-                               sf.varargs->getBaseExpr(),
-                               ConstantExpr::create(0, Expr::Int8), 0);
+        ref<Expr> nullExpr;
+        executeMemoryOperation(
+            state, true, arguments[0], sf.varargs->getBaseExpr(),
+            ConstantExpr::create(0, Expr::Int8), nullExpr, 0);
       } else {
+        ref<Expr> nullExpr;
         assert(WordSize == Expr::Int64 && "Unknown word size!");
 
         // X86-64 has quite complicated calling convention. However,
@@ -1342,27 +1350,27 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
         // make a function believe that all varargs are on stack.
         executeMemoryOperation(
             state, true, arguments[0], ConstantExpr::create(48, 32),
-            ConstantExpr::create(0, Expr::Int8), 0); // gp_offset
+            ConstantExpr::create(0, Expr::Int8), nullExpr, 0); // gp_offset
         Cell c1;
         c1.value =
             AddExpr::create(arguments[0].value, ConstantExpr::create(4, 64));
         c1.error = arguments[0].error;
         executeMemoryOperation(state, true, c1, ConstantExpr::create(304, 32),
-                               ConstantExpr::create(0, Expr::Int8),
+                               ConstantExpr::create(0, Expr::Int8), nullExpr,
                                0); // fp_offset
         Cell c2;
         c2.value =
             AddExpr::create(arguments[0].value, ConstantExpr::create(8, 64));
         c2.error = arguments[0].error;
         executeMemoryOperation(state, true, c2, sf.varargs->getBaseExpr(),
-                               ConstantExpr::create(0, Expr::Int8),
+                               ConstantExpr::create(0, Expr::Int8), nullExpr,
                                0); // overflow_arg_area
         Cell c3;
         c3.value =
             AddExpr::create(arguments[0].value, ConstantExpr::create(16, 64));
         c3.error = arguments[0].error;
         executeMemoryOperation(state, true, c3, ConstantExpr::create(0, 64),
-                               ConstantExpr::create(0, Expr::Int8),
+                               ConstantExpr::create(0, Expr::Int8), nullExpr,
                                0); // reg_save_area
       }
       break;
@@ -2437,8 +2445,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
   case Instruction::Load: {
     Cell cell = eval(ki, 0, state);
+    ref<Expr> nullExpr;
     executeMemoryOperation(state, false, cell, 0,
-                           ConstantExpr::create(0, Expr::Int8), ki);
+                           ConstantExpr::create(0, Expr::Int8), nullExpr, ki);
     break;
   }
   case Instruction::Store: {
@@ -2446,7 +2455,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     Cell valueCell = eval(ki, 0, state);
     ref<Expr> value = valueCell.value;
     ref<Expr> error = valueCell.error;
-    executeMemoryOperation(state, true, base, value, error, 0);
+    ref<Expr> valueWithError = valueCell.valueWithError;
+    executeMemoryOperation(state, true, base, value, error, valueWithError, 0);
     break;
   }
 
@@ -4185,6 +4195,7 @@ void Executor::resolveExact(ExecutionState &state,
 void Executor::executeMemoryOperation(
     ExecutionState &state, bool isWrite, Cell &cell,
     ref<Expr> value /* undef if read */, ref<Expr> error /* undef if read */,
+    ref<Expr> valueWithError /* undef if read */,
     KInstruction *target /* undef if write */) {
   ref<Expr> address = cell.value;
   Expr::Width type = (isWrite ? value->getWidth() : 
@@ -4238,7 +4249,8 @@ void Executor::executeMemoryOperation(
         } else {
           ObjectState *wos = state.addressSpace.getWriteable(mo, os);
           wos->write(offset, value);
-          state.symbolicError->executeStore(address, value, error);
+          state.symbolicError->executeStore(address, value, error,
+                                            valueWithError);
         }
       } else {
         ref<Expr> result = os->read(offset, type);
@@ -4246,9 +4258,11 @@ void Executor::executeMemoryOperation(
         if (interpreterOpts.MakeConcreteSymbolic)
           result = replaceReadWithSymbolic(state, result);
 
-        ref<Expr> resultError = state.symbolicError->executeLoad(
-            target->inst->getOperand(0), mo->getBaseExpr(), address, offset);
-        bindLocal(target, state, result, resultError);
+        std::pair<ref<Expr>, ref<Expr> > resultError =
+            state.symbolicError->executeLoad(target->inst->getOperand(0),
+                                             mo->getBaseExpr(), address,
+                                             offset);
+        bindLocal(target, state, result, resultError.first);
       }
 
       return;
@@ -4285,14 +4299,16 @@ void Executor::executeMemoryOperation(
         } else {
           ObjectState *wos = bound->addressSpace.getWriteable(mo, os);
           wos->write(mo->getOffsetExpr(address), value);
-          state.symbolicError->executeStore(address, value, error);
+          state.symbolicError->executeStore(address, value, error,
+                                            valueWithError);
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
-        ref<Expr> resultError = state.symbolicError->executeLoad(
-            target->inst->getOperand(0), mo->getBaseExpr(), address,
-            mo->getOffsetExpr(address));
-        bindLocal(target, *bound, result, resultError);
+        std::pair<ref<Expr>, ref<Expr> > resultError =
+            state.symbolicError->executeLoad(target->inst->getOperand(0),
+                                             mo->getBaseExpr(), address,
+                                             mo->getOffsetExpr(address));
+        bindLocal(target, *bound, result, resultError.first);
       }
     }
 

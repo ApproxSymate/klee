@@ -544,7 +544,8 @@ void ErrorState::registerInputError(ref<Expr> error) {
     inputErrorList.push_back(error);
 }
 
-void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error) {
+void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
+                                    ref<Expr> valueWithError) {
   if (error.isNull())
     return;
 
@@ -553,7 +554,8 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error) {
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
 	// We only store the error of concrete addresses
     uint64_t intAddress = cp->getZExtValue();
-    storedError[intAddress] = error;
+    storedError[intAddress] =
+        std::pair<ref<Expr>, ref<Expr> >(error, valueWithError);
   }
 }
 
@@ -574,20 +576,23 @@ void ErrorState::declareInputError(ref<Expr> address, ref<Expr> error) {
   assert(!"non-constant address");
 }
 
-ref<Expr> ErrorState::retrieveStoredError(ref<Expr> address) const {
+std::pair<ref<Expr>, ref<Expr> >
+ErrorState::retrieveStoredError(ref<Expr> address) const {
   ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+  ref<Expr> valueWithError;
 
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
-    std::map<uintptr_t, ref<Expr> >::const_iterator it =
+    std::map<uintptr_t, std::pair<ref<Expr>, ref<Expr> > >::const_iterator it =
         storedError.find(cp->getZExtValue());
     if (it != storedError.end()) {
-      error = it->second;
+      error = it->second.first;
+      valueWithError = it->second.second;
     }
   }
 
   // It is possible that the address is non-constant in that case assume the
   // error to be zero assert(!"non-constant address");
-  return error;
+  return std::pair<ref<Expr>, ref<Expr> >(error, valueWithError);
 }
 
 ref<Expr> ErrorState::retrieveDeclaredInputError(ref<Expr> address) const {
@@ -608,7 +613,7 @@ ref<Expr> ErrorState::retrieveDeclaredInputError(ref<Expr> address) const {
 
 bool ErrorState::hasStoredError(ref<Expr> address) const {
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
-    std::map<uintptr_t, ref<Expr> >::const_iterator it =
+    std::map<uintptr_t, std::pair<ref<Expr>, ref<Expr> > >::const_iterator it =
         storedError.find(cp->getZExtValue());
     if (it != storedError.end()) {
       return true;
@@ -618,8 +623,10 @@ bool ErrorState::hasStoredError(ref<Expr> address) const {
     return false;
 }
 
-ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
-                                  ref<Expr> address, ref<Expr> offset) {
+std::pair<ref<Expr>, ref<Expr> >
+ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
+                        ref<Expr> address, ref<Expr> offset) {
+  ref<Expr> nullExpr;
   ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
 
   if (hasStoredError(address)) {
@@ -629,8 +636,8 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
   ref<Expr> baseError = retrieveDeclaredInputError(base);
 
   if (baseError.isNull()) {
-    executeStoreSimple(address, error);
-    return error;
+    executeStoreSimple(address, error, nullExpr);
+    return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
   }
 
   // The following also performs nullity check on the result of the cast. If
@@ -717,7 +724,7 @@ ref<Expr> ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
   }
 
   registerInputError(error);
-  return error;
+  return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
 }
 
 void ErrorState::print(llvm::raw_ostream &os) const {
@@ -730,11 +737,12 @@ void ErrorState::print(llvm::raw_ostream &os) const {
   }
 
   os << "Store:\n";
-  for (std::map<uintptr_t, ref<Expr> >::const_iterator it = storedError.begin(),
-                                                       ie = storedError.end();
+  for (std::map<uintptr_t, std::pair<ref<Expr>, ref<Expr> > >::const_iterator
+           it = storedError.begin(),
+           ie = storedError.end();
        it != ie; ++it) {
     os << it->first << ": ";
-    it->second->print(os);
+    it->second.first->print(os);
     os << "\n";
   }
 
