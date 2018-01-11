@@ -119,6 +119,7 @@ bool SymbolicError::breakLoop(Executor *executor, ExecutionState &state,
                  ie1 = phiResultWidthList.end();
              it1 != ie1; ++it1) {
           ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+          ref<Expr> nullExpr;
 
           std::map<KInstruction *, ref<Expr> >::iterator initErrorIter =
               phiResultInitErrorStackElem.find(it1->first);
@@ -127,9 +128,9 @@ bool SymbolicError::breakLoop(Executor *executor, ExecutionState &state,
             error = initErrorIter->second;
           }
 
-          executor->bindLocal(it1->first, state,
-                              createFreshRead(executor, state, it1->second),
-                              error);
+          executor->bindLocal(
+              it1->first, state, createFreshRead(executor, state, it1->second),
+              std::pair<ref<Expr>, ref<Expr> >(error, nullExpr));
         }
 
         // Pop the last memory writes record
@@ -218,10 +219,10 @@ void SymbolicError::deregisterLoopIfExited(Executor *executor,
   }
 }
 
-ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
-                                        ref<Expr> result,
-                                        std::vector<Cell> &arguments,
-                                        unsigned int phiResultWidth) {
+std::pair<ref<Expr>, ref<Expr> >
+SymbolicError::propagateError(Executor *executor, KInstruction *ki,
+                              ref<Expr> result, std::vector<Cell> &arguments,
+                              unsigned int phiResultWidth) {
   std::pair<ref<Expr>, ref<Expr> > error =
       errorState->propagateError(executor, ki->inst, result, arguments);
 
@@ -242,10 +243,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
     }
   }
 
-  if (!error.second.isNull()) {
-    constraintsWithError.push_back(error.second);
-  }
-  return error.first;
+  return error;
 }
 
 SymbolicError::~SymbolicError() {

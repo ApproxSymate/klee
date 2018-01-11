@@ -1139,10 +1139,12 @@ const Cell& Executor::eval(KInstruction *ki, unsigned index,
 }
 
 void Executor::bindLocal(KInstruction *target, ExecutionState &state,
-                         ref<Expr> value, ref<Expr> error) {
+                         ref<Expr> value,
+                         std::pair<ref<Expr>, ref<Expr> > error) {
   Cell &c = getDestCell(state, target);
   c.value = value;
-  c.error = error;
+  c.error = error.first;
+  c.valueWithError = error.second;
 }
 
 void Executor::bindArgument(KFunction *kf, unsigned index, 
@@ -1223,7 +1225,9 @@ void Executor::executeGetValue(ExecutionState &state,
 
     // Default error value
     ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
-    bindLocal(target, state, value, error);
+    ref<Expr> nullExpr;
+    bindLocal(target, state, value,
+              std::pair<ref<Expr>, ref<Expr> >(error, nullExpr));
   } else {
     std::set< ref<Expr> > values;
     for (std::vector<SeedInfo>::iterator siit = it->second.begin(), 
@@ -1250,7 +1254,9 @@ void Executor::executeGetValue(ExecutionState &state,
       ExecutionState *es = *bit;
       if (es) {
         ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
-        bindLocal(target, *es, *vit, error);
+        ref<Expr> nullExpr;
+        bindLocal(target, *es, *vit,
+                  std::pair<ref<Expr>, ref<Expr> >(error, nullExpr));
       }
       ++bit;
     }
@@ -1592,11 +1598,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     bool isVoidReturn = (ri->getNumOperands() == 0);
     ref<Expr> result = ConstantExpr::alloc(0, Expr::Bool);
     ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+    ref<Expr> valueWithError;
 
     if (!isVoidReturn) {
       Cell c = eval(ki, 0, state);
       result = c.value;
       error = c.error;
+      valueWithError = c.valueWithError;
     }
     
     if (state.stack.size() <= 1) {
@@ -1641,7 +1649,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
             }
           }
 
-          bindLocal(kcaller, state, result, error);
+          bindLocal(kcaller, state, result,
+                    std::pair<ref<Expr>, ref<Expr> >(error, valueWithError));
         }
       } else {
         // We check that the return value has no users instead of
@@ -1979,7 +1988,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> ferror = c2.error;
     ref<Expr> result = SelectExpr::create(cond, tExpr, fExpr);
     ref<Expr> error = SelectExpr::create(cond, terror, ferror);
-    bindLocal(ki, state, result, error);
+    ref<Expr> nullExpr;
+    bindLocal(ki, state, result,
+              std::pair<ref<Expr>, ref<Expr> >(error, nullExpr));
     break;
   }
 
@@ -3964,7 +3975,10 @@ void Executor::callExternalFunction(ExecutionState &state,
   if (resultType != Type::getVoidTy(function->getContext())) {
     ref<Expr> e = ConstantExpr::fromMemory((void*) args, 
                                            getWidthForLLVMType(resultType));
-    bindLocal(target, state, e, ConstantExpr::create(0, Expr::Int8));
+    ref<Expr> nullExpr;
+    bindLocal(target, state, e,
+              std::pair<ref<Expr>, ref<Expr> >(
+                  ConstantExpr::create(0, Expr::Int8), nullExpr));
   }
 }
 
@@ -4028,18 +4042,22 @@ void Executor::executeAlloc(ExecutionState &state,
         memory->allocate(CE->getZExtValue(), isLocal, /*isGlobal=*/false,
                          allocSite, allocationAlignment);
     if (!mo) {
+      ref<Expr> nullExpr;
       bindLocal(target, state,
                 ConstantExpr::alloc(0, Context::get().getPointerWidth()),
-                ConstantExpr::create(0, Expr::Int8));
+                std::pair<ref<Expr>, ref<Expr> >(
+                    ConstantExpr::create(0, Expr::Int8), nullExpr));
     } else {
       ObjectState *os = bindObjectInState(state, mo, isLocal);
+      ref<Expr> nullExpr;
       if (zeroMemory) {
         os->initializeToZero();
       } else {
         os->initializeToRandom();
       }
       bindLocal(target, state, mo->getBaseExpr(),
-                ConstantExpr::create(0, Expr::Int8));
+                std::pair<ref<Expr>, ref<Expr> >(
+                    ConstantExpr::create(0, Expr::Int8), nullExpr));
 
       if (reallocFrom) {
         unsigned count = std::min(reallocFrom->size, os->size);
@@ -4104,10 +4122,12 @@ void Executor::executeAlloc(ExecutionState &state,
                  UltExpr::create(ConstantExpr::alloc(1 << 31, W), size),
                  ConstantExpr::create(0, Expr::Int8), true);
         if (hugeSize.first) {
+          ref<Expr> nullExpr;
           klee_message("NOTE: found huge malloc, returning 0");
           bindLocal(target, *hugeSize.first,
                     ConstantExpr::alloc(0, Context::get().getPointerWidth()),
-                    ConstantExpr::create(0, Expr::Int8));
+                    std::pair<ref<Expr>, ref<Expr> >(
+                        ConstantExpr::create(0, Expr::Int8), nullExpr));
         }
         
         if (hugeSize.second) {
@@ -4135,9 +4155,11 @@ void Executor::executeFree(ExecutionState &state,
   StatePair zeroPointer = fork(state, Expr::createIsZero(address),
                                ConstantExpr::create(0, Expr::Int8), true);
   if (zeroPointer.first) {
+    ref<Expr> nullExpr;
     if (target)
       bindLocal(target, *zeroPointer.first, Expr::createPointer(0),
-                ConstantExpr::create(0, Expr::Int8));
+                std::pair<ref<Expr>, ref<Expr> >(
+                    ConstantExpr::create(0, Expr::Int8), nullExpr));
   }
   if (zeroPointer.second) { // address != 0
     ExactResolutionList rl;
@@ -4153,10 +4175,12 @@ void Executor::executeFree(ExecutionState &state,
         terminateStateOnError(*it->second, "free of global", Free, NULL,
                               getAddressInfo(*it->second, address));
       } else {
+        ref<Expr> nullExpr;
         it->second->addressSpace.unbindObject(mo);
         if (target)
           bindLocal(target, *it->second, Expr::createPointer(0),
-                    ConstantExpr::create(0, Expr::Int8));
+                    std::pair<ref<Expr>, ref<Expr> >(
+                        ConstantExpr::create(0, Expr::Int8), nullExpr));
       }
     }
   }
@@ -4258,11 +4282,10 @@ void Executor::executeMemoryOperation(
         if (interpreterOpts.MakeConcreteSymbolic)
           result = replaceReadWithSymbolic(state, result);
 
-        std::pair<ref<Expr>, ref<Expr> > resultError =
-            state.symbolicError->executeLoad(target->inst->getOperand(0),
-                                             mo->getBaseExpr(), address,
-                                             offset);
-        bindLocal(target, state, result, resultError.first);
+        bindLocal(target, state, result,
+                  state.symbolicError->executeLoad(target->inst->getOperand(0),
+                                                   mo->getBaseExpr(), address,
+                                                   offset));
       }
 
       return;
@@ -4304,11 +4327,10 @@ void Executor::executeMemoryOperation(
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
-        std::pair<ref<Expr>, ref<Expr> > resultError =
-            state.symbolicError->executeLoad(target->inst->getOperand(0),
-                                             mo->getBaseExpr(), address,
-                                             mo->getOffsetExpr(address));
-        bindLocal(target, *bound, result, resultError.first);
+        bindLocal(target, *bound, result,
+                  state.symbolicError->executeLoad(target->inst->getOperand(0),
+                                                   mo->getBaseExpr(), address,
+                                                   mo->getOffsetExpr(address)));
       }
     }
 

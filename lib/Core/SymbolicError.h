@@ -126,9 +126,9 @@ public:
                                         inputErrorList);
   }
 
-  ref<Expr> propagateError(Executor *executor, KInstruction *ki,
-                           ref<Expr> result, std::vector<Cell> &arguments,
-                           unsigned int phiResultWidth = 0);
+  std::pair<ref<Expr>, ref<Expr> >
+  propagateError(Executor *executor, KInstruction *ki, ref<Expr> result,
+                 std::vector<Cell> &arguments, unsigned int phiResultWidth = 0);
 
   bool checkStoredError(ref<Expr> address) {
     return errorState->hasStoredError(address);

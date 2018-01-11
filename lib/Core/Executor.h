@@ -357,7 +357,7 @@ private:
   }
 
   void bindLocal(KInstruction *target, ExecutionState &state, ref<Expr> value,
-                 ref<Expr> error);
+                 std::pair<ref<Expr>, ref<Expr> > error);
   void bindArgument(KFunction *kf, 
                     unsigned index,
                     ExecutionState &state,
