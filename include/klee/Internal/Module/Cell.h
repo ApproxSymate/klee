@@ -18,6 +18,7 @@ namespace klee {
   struct Cell {
     ref<Expr> value;
     ref<Expr> error;
+    ref<Expr> valueWithError;
   };
 }
 
