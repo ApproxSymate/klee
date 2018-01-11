@@ -182,16 +182,6 @@ public:
     constraintsWithError.push_back(error);
   }
 
-  void negateTopConstraint() {
-    if (!constraintsWithError.size())
-      return;
-
-    ref<Expr> constraint = constraintsWithError.back();
-    constraintsWithError.pop_back();
-
-    constraintsWithError.push_back(Expr::createIsZero(constraint));
-  }
-
   /// print - Print the object content to stream
   void print(llvm::raw_ostream &os) const;
 

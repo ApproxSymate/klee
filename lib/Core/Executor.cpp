@@ -783,7 +783,9 @@ void Executor::branch(ExecutionState &state,
 }
 
 Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
-                                   ref<Expr> error, bool isInternal) {
+                                   ref<Expr> error,
+                                   ref<Expr> conditionWithError,
+                                   bool isInternal) {
   Solver::Validity res;
   std::map< ExecutionState*, std::vector<SeedInfo> >::iterator it = 
     seedMap.find(&current);
@@ -1000,7 +1002,10 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
 
     addConstraint(*trueState, condition);
     addConstraint(*falseState, Expr::createIsZero(condition));
-    falseState->symbolicError->negateTopConstraint();
+
+    trueState->symbolicError->addErrorConstraint(conditionWithError);
+    falseState->symbolicError->addErrorConstraint(
+        Expr::createIsZero(conditionWithError));
 
     // Kinda gross, do we even really still want this option?
     if (MaxDepth && MaxDepth<=trueState->depth) {
@@ -1696,7 +1701,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
              "Wrong operand index!");
       ref<Expr> cond = eval(ki, 0, state).value;
       ref<Expr> error = eval(ki, 0, state).error;
-      Executor::StatePair branches = fork(state, cond, error, false);
+      ref<Expr> condWithError = eval(ki, 0, state).valueWithError;
+      Executor::StatePair branches =
+          fork(state, cond, error, condWithError, false);
 
       // NOTE: There is a hidden dependency here, markBranchVisited
       // requires that we still be in the context of the branch
@@ -1929,11 +1936,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
          handle it for us, albeit with some overhead. */
       do {
         ref<ConstantExpr> value;
+        ref<Expr> nullExpr;
         bool success = solver->getValue(*free, v, value);
         assert(success && "FIXME: Unhandled solver failure");
         (void) success;
-        StatePair res = fork(*free, EqExpr::create(v, value),
-                             ConstantExpr::create(1, Expr::Int8), true);
+        StatePair res =
+            fork(*free, EqExpr::create(v, value),
+                 ConstantExpr::create(1, Expr::Int8), nullExpr, true);
         if (res.first) {
           uint64_t addr = value->getZExtValue();
           if (legalFunctions.count(addr)) {
@@ -4096,8 +4105,10 @@ void Executor::executeAlloc(ExecutionState &state,
       example = tmp;
     }
 
-    StatePair fixedSize = fork(state, EqExpr::create(example, size),
-                               ConstantExpr::create(0, Expr::Int8), true);
+    ref<Expr> nullExpr;
+    StatePair fixedSize =
+        fork(state, EqExpr::create(example, size),
+             ConstantExpr::create(0, Expr::Int8), nullExpr, true);
 
     if (fixedSize.second) { 
       // Check for exactly two values
@@ -4115,12 +4126,13 @@ void Executor::executeAlloc(ExecutionState &state,
         executeAlloc(*fixedSize.second, tmp, isLocal,
                      target, zeroMemory, reallocFrom);
       } else {
+        ref<Expr> nullExpr;
         // See if a *really* big value is possible. If so assume
         // malloc will fail for it, so lets fork and return 0.
         StatePair hugeSize =
             fork(*fixedSize.second,
                  UltExpr::create(ConstantExpr::alloc(1 << 31, W), size),
-                 ConstantExpr::create(0, Expr::Int8), true);
+                 ConstantExpr::create(0, Expr::Int8), nullExpr, true);
         if (hugeSize.first) {
           ref<Expr> nullExpr;
           klee_message("NOTE: found huge malloc, returning 0");
@@ -4152,8 +4164,10 @@ void Executor::executeAlloc(ExecutionState &state,
 void Executor::executeFree(ExecutionState &state,
                            ref<Expr> address,
                            KInstruction *target) {
-  StatePair zeroPointer = fork(state, Expr::createIsZero(address),
-                               ConstantExpr::create(0, Expr::Int8), true);
+  ref<Expr> nullExpr;
+  StatePair zeroPointer =
+      fork(state, Expr::createIsZero(address),
+           ConstantExpr::create(0, Expr::Int8), nullExpr, true);
   if (zeroPointer.first) {
     ref<Expr> nullExpr;
     if (target)
@@ -4197,10 +4211,12 @@ void Executor::resolveExact(ExecutionState &state,
   ExecutionState *unbound = &state;
   for (ResolutionList::iterator it = rl.begin(), ie = rl.end(); 
        it != ie; ++it) {
+    ref<Expr> nullExpr;
     ref<Expr> inBounds = EqExpr::create(p, it->first->getBaseExpr());
 
     StatePair branches =
-        fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), true);
+        fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), nullExpr,
+             true);
 
     if (branches.first)
       results.push_back(std::make_pair(*it, branches.first));
@@ -4307,10 +4323,12 @@ void Executor::executeMemoryOperation(
   for (ResolutionList::iterator i = rl.begin(), ie = rl.end(); i != ie; ++i) {
     const MemoryObject *mo = i->first;
     const ObjectState *os = i->second;
+    ref<Expr> nullExpr;
     ref<Expr> inBounds = mo->getBoundsCheckPointer(address, bytes);
 
     StatePair branches =
-        fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), true);
+        fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), nullExpr,
+             true);
     ExecutionState *bound = branches.first;
 
     // bound can be 0 on failure or overlapped 

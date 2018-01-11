@@ -703,18 +703,20 @@ void SpecialFunctionHandler::handleRealloc(ExecutionState &state,
          "invalid number of arguments to realloc");
   ref<Expr> address = arguments[0];
   ref<Expr> size = arguments[1];
+  ref<Expr> nullExpr;
 
   Executor::StatePair zeroSize =
       executor.fork(state, Expr::createIsZero(size),
-                    ConstantExpr::create(0, Expr::Int8), true);
+                    ConstantExpr::create(0, Expr::Int8), nullExpr, true);
 
   if (zeroSize.first) { // size == 0
     executor.executeFree(*zeroSize.first, address, target);   
   }
   if (zeroSize.second) { // size != 0
+    ref<Expr> nullExpr;
     Executor::StatePair zeroPointer =
         executor.fork(*zeroSize.second, Expr::createIsZero(address),
-                      ConstantExpr::create(0, Expr::Int8), true);
+                      ConstantExpr::create(0, Expr::Int8), nullExpr, true);
 
     if (zeroPointer.first) { // address == 0
       executor.executeAlloc(*zeroPointer.first, size, false, target);
