@@ -1003,9 +1003,11 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
     addConstraint(*trueState, condition);
     addConstraint(*falseState, Expr::createIsZero(condition));
 
-    trueState->symbolicError->addErrorConstraint(conditionWithError);
-    falseState->symbolicError->addErrorConstraint(
-        Expr::createIsZero(conditionWithError));
+    if (!conditionWithError.isNull()) {
+      trueState->symbolicError->addErrorConstraint(conditionWithError);
+      falseState->symbolicError->addErrorConstraint(
+          Expr::createIsZero(conditionWithError));
+    }
 
     // Kinda gross, do we even really still want this option?
     if (MaxDepth && MaxDepth<=trueState->depth) {
