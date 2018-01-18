@@ -126,32 +126,36 @@ public:
                                         inputErrorList);
   }
 
-  ref<Expr> propagateError(Executor *executor, KInstruction *ki,
-                           ref<Expr> result, std::vector<Cell> &arguments,
-                           unsigned int phiResultWidth = 0);
+  std::pair<ref<Expr>, ref<Expr> >
+  propagateError(Executor *executor, KInstruction *ki, ref<Expr> result,
+                 std::vector<Cell> &arguments, unsigned int phiResultWidth = 0);
 
   bool checkStoredError(ref<Expr> address) {
     return errorState->hasStoredError(address);
   }
 
-  ref<Expr> retrieveStoredError(ref<Expr> address) {
+  std::pair<ref<Expr>, ref<Expr> > retrieveStoredError(ref<Expr> address) {
     return errorState->retrieveStoredError(address);
   }
 
   std::string &getOutputString() { return errorState->getOutputString(); }
 
-  void executeStore(ref<Expr> address, ref<Expr> value, ref<Expr> error);
+  void executeStore(ref<Expr> address, ref<Expr> value, ref<Expr> error,
+                    ref<Expr> valueWithError);
 
-  void storeError(ref<Expr> address, ref<Expr> error) {
-    errorState->executeStoreSimple(address, error);
+  void storeError(ref<Expr> address, ref<Expr> error,
+                  ref<Expr> errorWithValue) {
+    errorState->executeStoreSimple(address, error, errorWithValue);
   }
 
   void declareInputError(ref<Expr> address, ref<Expr> error) {
     errorState->declareInputError(address, error);
   }
 
-  ref<Expr> executeLoad(llvm::Value *addressValue, ref<Expr> base,
-                        ref<Expr> address, ref<Expr> offset) {
+  std::pair<ref<Expr>, ref<Expr> > executeLoad(llvm::Value *addressValue,
+                                               ref<Expr> base,
+                                               ref<Expr> address,
+                                               ref<Expr> offset) {
     return errorState->executeLoad(addressValue, base, address, offset);
   }
 
@@ -176,16 +180,6 @@ public:
 
   void addErrorConstraint(ref<Expr> error) {
     constraintsWithError.push_back(error);
-  }
-
-  void negateTopConstraint() {
-    if (!constraintsWithError.size())
-      return;
-
-    ref<Expr> constraint = constraintsWithError.back();
-    constraintsWithError.pop_back();
-
-    constraintsWithError.push_back(Expr::createIsZero(constraint));
   }
 
   /// print - Print the object content to stream

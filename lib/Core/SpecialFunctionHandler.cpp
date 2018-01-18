@@ -425,10 +425,12 @@ void SpecialFunctionHandler::handleIsSymbolic(ExecutionState &state,
                                 std::vector<ref<Expr> > &arguments) {
   assert(arguments.size()==1 && "invalid number of arguments to klee_is_symbolic");
 
+  ref<Expr> nullExpr;
   executor.bindLocal(
       target, state,
       ConstantExpr::create(!isa<ConstantExpr>(arguments[0]), Expr::Int32),
-      ConstantExpr::create(0, Expr::Int8));
+      std::pair<ref<Expr>, ref<Expr> >(ConstantExpr::create(0, Expr::Int8),
+                                       nullExpr));
 }
 
 void
@@ -657,12 +659,14 @@ void SpecialFunctionHandler::handleGetObjSize(ExecutionState &state,
   executor.resolveExact(state, arguments[0], rl, "klee_get_obj_size");
   for (Executor::ExactResolutionList::iterator it = rl.begin(), 
          ie = rl.end(); it != ie; ++it) {
+    ref<Expr> nullExpr;
     executor.bindLocal(
         target, *it->second,
         ConstantExpr::create(it->first.first->size,
                              executor.kmodule->targetData->getTypeSizeInBits(
                                  target->inst->getType())),
-        ConstantExpr::create(0, Expr::Int8));
+        std::pair<ref<Expr>, ref<Expr> >(ConstantExpr::create(0, Expr::Int8),
+                                         nullExpr));
   }
 }
 
@@ -672,8 +676,11 @@ void SpecialFunctionHandler::handleGetErrno(ExecutionState &state,
   // XXX should type check args
   assert(arguments.size()==0 &&
          "invalid number of arguments to klee_get_errno");
+
+  ref<Expr> nullExpr;
   executor.bindLocal(target, state, ConstantExpr::create(errno, Expr::Int32),
-                     ConstantExpr::create(0, Expr::Int8));
+                     std::pair<ref<Expr>, ref<Expr> >(
+                         ConstantExpr::create(0, Expr::Int8), nullExpr));
 }
 
 void SpecialFunctionHandler::handleCalloc(ExecutionState &state,
@@ -696,18 +703,20 @@ void SpecialFunctionHandler::handleRealloc(ExecutionState &state,
          "invalid number of arguments to realloc");
   ref<Expr> address = arguments[0];
   ref<Expr> size = arguments[1];
+  ref<Expr> nullExpr;
 
   Executor::StatePair zeroSize =
       executor.fork(state, Expr::createIsZero(size),
-                    ConstantExpr::create(0, Expr::Int8), true);
+                    ConstantExpr::create(0, Expr::Int8), nullExpr, true);
 
   if (zeroSize.first) { // size == 0
     executor.executeFree(*zeroSize.first, address, target);   
   }
   if (zeroSize.second) { // size != 0
+    ref<Expr> nullExpr;
     Executor::StatePair zeroPointer =
         executor.fork(*zeroSize.second, Expr::createIsZero(address),
-                      ConstantExpr::create(0, Expr::Int8), true);
+                      ConstantExpr::create(0, Expr::Int8), nullExpr, true);
 
     if (zeroPointer.first) { // address == 0
       executor.executeAlloc(*zeroPointer.first, size, false, target);

@@ -304,6 +304,7 @@ private:
   void executeMemoryOperation(ExecutionState &state, bool isWrite, Cell &cell,
                               ref<Expr> value /* undef if read */,
                               ref<Expr> error /* undef if read */,
+                              ref<Expr> valueWithError /* undef if read */,
                               KInstruction *target /* undef if write */);
 
   void executeMakeSymbolic(ExecutionState &state, const MemoryObject *mo,
@@ -329,7 +330,7 @@ private:
   // not hold, respectively. One of the states is necessarily the
   // current state, and one of the states may be null.
   StatePair fork(ExecutionState &current, ref<Expr> condition, ref<Expr> error,
-                 bool isInternal);
+                 ref<Expr> valueWithError, bool isInternal);
 
   /// Add the given (boolean) condition as a constraint on state. This
   /// function is a wrapper around the state's addConstraint function
@@ -356,7 +357,7 @@ private:
   }
 
   void bindLocal(KInstruction *target, ExecutionState &state, ref<Expr> value,
-                 ref<Expr> error);
+                 std::pair<ref<Expr>, ref<Expr> > error);
   void bindArgument(KFunction *kf, 
                     unsigned index,
                     ExecutionState &state,

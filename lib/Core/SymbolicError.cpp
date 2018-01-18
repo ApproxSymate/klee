@@ -86,7 +86,8 @@ bool SymbolicError::breakLoop(Executor *executor, ExecutionState &state,
           addressCell.value = it1->first;
 
           // We retrieve the error stored in the address
-          ref<Expr> error = errorState->retrieveStoredError(it1->first);
+          std::pair<ref<Expr>, ref<Expr> > errorAndMore =
+              errorState->retrieveStoredError(it1->first);
 
           // We retrieve the initial error stored in the address
           std::map<ref<Expr>, ref<Expr> >::iterator initErrorIter =
@@ -95,14 +96,15 @@ bool SymbolicError::breakLoop(Executor *executor, ExecutionState &state,
           if (initErrorIter != initErrorStackElem.end()) {
             initError = initErrorIter->second;
           }
-          error = computeLoopError(tripCount, initError, error);
+          ref<Expr> error =
+              computeLoopError(tripCount, initError, errorAndMore.first);
           ref<Expr> freshRead =
               createFreshRead(executor, state, it1->second->getWidth());
 
           // We actually perform an update to KLEE's shadow memory to store the
           // error and an unknown value (freshRead) of the value itself.
           executor->executeMemoryOperation(state, true, addressCell, freshRead,
-                                           error, 0);
+                                           error, errorAndMore.second, 0);
         }
 
         // Here we simply retrieve the error amounts for PHIs already stored in
@@ -117,6 +119,7 @@ bool SymbolicError::breakLoop(Executor *executor, ExecutionState &state,
                  ie1 = phiResultWidthList.end();
              it1 != ie1; ++it1) {
           ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
+          ref<Expr> nullExpr;
 
           std::map<KInstruction *, ref<Expr> >::iterator initErrorIter =
               phiResultInitErrorStackElem.find(it1->first);
@@ -125,9 +128,9 @@ bool SymbolicError::breakLoop(Executor *executor, ExecutionState &state,
             error = initErrorIter->second;
           }
 
-          executor->bindLocal(it1->first, state,
-                              createFreshRead(executor, state, it1->second),
-                              error);
+          executor->bindLocal(
+              it1->first, state, createFreshRead(executor, state, it1->second),
+              std::pair<ref<Expr>, ref<Expr> >(error, nullExpr));
         }
 
         // Pop the last memory writes record
@@ -216,10 +219,10 @@ void SymbolicError::deregisterLoopIfExited(Executor *executor,
   }
 }
 
-ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
-                                        ref<Expr> result,
-                                        std::vector<Cell> &arguments,
-                                        unsigned int phiResultWidth) {
+std::pair<ref<Expr>, ref<Expr> >
+SymbolicError::propagateError(Executor *executor, KInstruction *ki,
+                              ref<Expr> result, std::vector<Cell> &arguments,
+                              unsigned int phiResultWidth) {
   std::pair<ref<Expr>, ref<Expr> > error =
       errorState->propagateError(executor, ki->inst, result, arguments);
 
@@ -240,10 +243,7 @@ ref<Expr> SymbolicError::propagateError(Executor *executor, KInstruction *ki,
     }
   }
 
-  if (!error.second.isNull()) {
-    constraintsWithError.push_back(error.second);
-  }
-  return error.first;
+  return error;
 }
 
 SymbolicError::~SymbolicError() {
@@ -251,7 +251,7 @@ SymbolicError::~SymbolicError() {
 }
 
 void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
-                                 ref<Expr> error) {
+                                 ref<Expr> error, ref<Expr> valueWithError) {
     if (LoopBreaking && !writesStack.empty()) {
       // Record the error at each store at each iteration.
       if (llvm::isa<ConstantExpr>(address)) {
@@ -268,7 +268,7 @@ void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
         assert(!"non-constant address");
       }
     }
-    storeError(address, error);
+    storeError(address, error, valueWithError);
 }
 
 void SymbolicError::print(llvm::raw_ostream &os) const {
