@@ -29,6 +29,8 @@ private:
   // Parameter symbols
   ::Z3_symbol timeoutParamStrSymbol;
 
+  bool real;
+
   bool internalRunSolver(const Query &,
                          const std::vector<const Array *> *objects,
                          std::vector<std::vector<unsigned char> > *values,
@@ -41,7 +43,7 @@ private:
                            std::vector<bool> *epsilon, bool &hasSolution);
 
 public:
-  Z3ErrorSolverImpl();
+  Z3ErrorSolverImpl(bool _real);
   ~Z3ErrorSolverImpl();
 
   char *getConstraintLog(const Query &);
@@ -81,10 +83,11 @@ public:
   SolverRunStatus getOperationStatusCode();
 };
 
-Z3ErrorSolverImpl::Z3ErrorSolverImpl()
-    : builder(new Z3ErrorBuilder(/*autoClearConstructCache=*/false)),
+Z3ErrorSolverImpl::Z3ErrorSolverImpl(bool _real)
+    : builder(new Z3ErrorBuilder(_real, /*autoClearConstructCache=*/false)),
       timeout(0.0), runStatusCode(SOLVER_RUN_STATUS_FAILURE) {
   assert(builder && "unable to create Z3Builder");
+  real = _real;
   solverParameters = Z3_mk_params(builder->ctx);
   Z3_params_inc_ref(builder->ctx, solverParameters);
   timeoutParamStrSymbol = Z3_mk_string_symbol(builder->ctx, "timeout");
@@ -105,7 +108,7 @@ Z3ErrorSolverImpl::~Z3ErrorSolverImpl() {
   delete builder;
 }
 
-Z3ErrorSolver::Z3ErrorSolver() : Solver(new Z3ErrorSolverImpl()) {}
+Z3ErrorSolver::Z3ErrorSolver(bool real) : Solver(new Z3ErrorSolverImpl(real)) {}
 
 char *Z3ErrorSolver::getConstraintLog(const Query &query) {
   return impl->getConstraintLog(query);
@@ -294,20 +297,13 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
        it != ie; ++it) {
     const Array *array = *it;
 
-    switch (ComputeErrorBound) {
-    case VIA_INTEGER: {
+    if (real) {
+      Z3ErrorASTHandle initial_read = builder->buildReal(array->name.c_str());
+      Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
+    } else {
       Z3ErrorASTHandle initial_read =
           builder->buildInteger(array->name.c_str());
       Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
-      break;
-    }
-    case VIA_REAL: {
-      Z3ErrorASTHandle initial_read = builder->buildReal(array->name.c_str());
-      Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
-      break;
-    }
-    default:
-      break;
     }
   }
 

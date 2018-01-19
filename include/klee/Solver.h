@@ -246,7 +246,7 @@ namespace klee {
   class Z3ErrorSolver : public Solver {
   public:
     /// Z3Solver - Construct a new Z3Solver.
-    Z3ErrorSolver();
+    Z3ErrorSolver(bool real);
 
     /// Get the query in SMT-LIBv2 format.
     /// \return A C-style string. The caller is responsible for freeing this.
