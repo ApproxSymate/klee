@@ -62,7 +62,7 @@ class SymbolicError {
   ref<Expr> kleeBoundErrorExpr;
 
   /// \brief Contains the path conditions with propagated error
-  std::vector<ref<Expr> > constraintsWithError;
+  ConstraintManager constraintsWithError;
 
   /// \brief The path probability
   double pathProbability;
@@ -174,12 +174,10 @@ public:
 
   double getBranchCount() const { return branchCount; }
 
-  std::vector<ref<Expr> > &getConstraintsWithError() {
-    return constraintsWithError;
-  }
+  ConstraintManager &getConstraintsWithError() { return constraintsWithError; }
 
   void addErrorConstraint(ref<Expr> error) {
-    constraintsWithError.push_back(error);
+    constraintsWithError.addConstraint(error);
   }
 
   /// print - Print the object content to stream
