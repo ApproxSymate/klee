@@ -261,7 +261,8 @@ namespace klee {
                               const std::vector<const Array *> &objects,
                               std::vector<bool> &infinity,
                               std::vector<std::pair<int, double> > &values,
-                              std::vector<bool> &epsilon, bool &hasSolution);
+                              std::vector<bool> &epsilon, bool &hasSolution,
+                              bool maximize);
   };
 #endif // ENABLE_Z3
 

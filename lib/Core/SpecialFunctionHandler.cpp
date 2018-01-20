@@ -476,7 +476,8 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
       bool hasSolution;
       Query queryWithFalse(cm, ConstantExpr::create(0, Expr::Bool));
       bool success = executor.errorSolver->computeOptimalValues(
-          queryWithFalse, objects, infinity, values, epsilon, hasSolution);
+          queryWithFalse, objects, infinity, values, epsilon, hasSolution,
+          true);
 
       assert(success && hasSolution && "state has invalid constraint set");
 
