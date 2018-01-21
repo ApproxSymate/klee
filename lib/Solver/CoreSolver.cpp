@@ -102,7 +102,9 @@ Solver *createCoreSolver(CoreSolverType cst) {
 Z3ErrorSolver *createCoreErrorSolver() {
   if (ComputeErrorBound != NO_COMPUTATION) {
     klee_message("Using Z3 for reasoning about error expressions");
-    return new Z3ErrorSolver();
+    if (ComputeErrorBound == VIA_REAL)
+      return new Z3ErrorSolver(true);
+    return new Z3ErrorSolver(false);
   }
   return NULL;
 }

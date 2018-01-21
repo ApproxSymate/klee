@@ -29,6 +29,8 @@ private:
   // Parameter symbols
   ::Z3_symbol timeoutParamStrSymbol;
 
+  bool real;
+
   bool internalRunSolver(const Query &,
                          const std::vector<const Array *> *objects,
                          std::vector<std::vector<unsigned char> > *values,
@@ -36,12 +38,11 @@ private:
 
   bool internalRunOptimize(const Query &,
                            const std::vector<const Array *> *objects,
-                           std::vector<bool> *infinity,
                            std::vector<std::pair<int, double> > *values,
-                           std::vector<bool> *epsilon, bool &hasSolution);
+                           bool &hasSolution, bool maximize);
 
 public:
-  Z3ErrorSolverImpl();
+  Z3ErrorSolverImpl(bool _real);
   ~Z3ErrorSolverImpl();
 
   char *getConstraintLog(const Query &);
@@ -64,9 +65,8 @@ public:
                             bool &hasSolution);
   bool computeOptimalValues(const Query &,
                             const std::vector<const Array *> &objects,
-                            std::vector<bool> &infinity,
                             std::vector<std::pair<int, double> > &values,
-                            std::vector<bool> &epsilon, bool &hasSolution);
+                            bool &hasSolution, bool maximize);
   SolverRunStatus
   handleSolverResponse(::Z3_solver theSolver, ::Z3_lbool satisfiable,
                        const std::vector<const Array *> *objects,
@@ -75,16 +75,16 @@ public:
   SolverRunStatus
   handleOptimizeResponse(::Z3_optimize theSolver, ::Z3_lbool satisfiable,
                          const std::vector<const Array *> *objects,
-                         std::vector<bool> *infinity,
                          std::vector<std::pair<int, double> > *values,
-                         std::vector<bool> *epsilon, bool &hasSolution);
+                         bool &hasSolution, bool maximize);
   SolverRunStatus getOperationStatusCode();
 };
 
-Z3ErrorSolverImpl::Z3ErrorSolverImpl()
-    : builder(new Z3ErrorBuilder(/*autoClearConstructCache=*/false)),
+Z3ErrorSolverImpl::Z3ErrorSolverImpl(bool _real)
+    : builder(new Z3ErrorBuilder(_real, /*autoClearConstructCache=*/false)),
       timeout(0.0), runStatusCode(SOLVER_RUN_STATUS_FAILURE) {
   assert(builder && "unable to create Z3Builder");
+  real = _real;
   solverParameters = Z3_mk_params(builder->ctx);
   Z3_params_inc_ref(builder->ctx, solverParameters);
   timeoutParamStrSymbol = Z3_mk_string_symbol(builder->ctx, "timeout");
@@ -105,7 +105,7 @@ Z3ErrorSolverImpl::~Z3ErrorSolverImpl() {
   delete builder;
 }
 
-Z3ErrorSolver::Z3ErrorSolver() : Solver(new Z3ErrorSolverImpl()) {}
+Z3ErrorSolver::Z3ErrorSolver(bool real) : Solver(new Z3ErrorSolverImpl(real)) {}
 
 char *Z3ErrorSolver::getConstraintLog(const Query &query) {
   return impl->getConstraintLog(query);
@@ -117,11 +117,11 @@ void Z3ErrorSolver::setCoreSolverTimeout(double timeout) {
 
 bool Z3ErrorSolver::computeOptimalValues(
     const Query &query, const std::vector<const Array *> &objects,
-    std::vector<bool> &infinity, std::vector<std::pair<int, double> > &values,
-    std::vector<bool> &epsilon, bool &hasSolution) {
+    std::vector<std::pair<int, double> > &values, bool &hasSolution,
+    bool maximize) {
   Z3ErrorSolverImpl *solverImpl = (Z3ErrorSolverImpl *)impl;
-  return solverImpl->computeOptimalValues(query, objects, infinity, values,
-                                          epsilon, hasSolution);
+  return solverImpl->computeOptimalValues(query, objects, values, hasSolution,
+                                          maximize);
 }
 
 char *Z3ErrorSolverImpl::getConstraintLog(const Query &query) {
@@ -199,10 +199,9 @@ bool Z3ErrorSolverImpl::computeInitialValues(
 
 bool Z3ErrorSolverImpl::computeOptimalValues(
     const Query &query, const std::vector<const Array *> &objects,
-    std::vector<bool> &infinity, std::vector<std::pair<int, double> > &values,
-    std::vector<bool> &epsilon, bool &hasSolution) {
-  return internalRunOptimize(query, &objects, &infinity, &values, &epsilon,
-                             hasSolution);
+    std::vector<std::pair<int, double> > &values, bool &hasSolution,
+    bool maximize) {
+  return internalRunOptimize(query, &objects, &values, hasSolution, maximize);
 }
 
 bool Z3ErrorSolverImpl::internalRunSolver(
@@ -266,8 +265,8 @@ bool Z3ErrorSolverImpl::internalRunSolver(
 
 bool Z3ErrorSolverImpl::internalRunOptimize(
     const Query &query, const std::vector<const Array *> *objects,
-    std::vector<bool> *infinity, std::vector<std::pair<int, double> > *values,
-    std::vector<bool> *epsilon, bool &hasSolution) {
+    std::vector<std::pair<int, double> > *values, bool &hasSolution,
+    bool maximize) {
   TimerStatIncrementer t(stats::queryTime);
   // TODO: Does making a new solver for each query have a performance
   // impact vs making one global solver and using push and pop?
@@ -294,20 +293,21 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
        it != ie; ++it) {
     const Array *array = *it;
 
-    switch (ComputeErrorBound) {
-    case VIA_INTEGER: {
+    if (real) {
+      Z3ErrorASTHandle initial_read = builder->buildReal(array->name.c_str());
+      if (maximize) {
+        Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
+      } else {
+        Z3_optimize_minimize(builder->ctx, theSolver, initial_read);
+      }
+    } else {
       Z3ErrorASTHandle initial_read =
           builder->buildInteger(array->name.c_str());
-      Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
-      break;
-    }
-    case VIA_REAL: {
-      Z3ErrorASTHandle initial_read = builder->buildReal(array->name.c_str());
-      Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
-      break;
-    }
-    default:
-      break;
+      if (maximize) {
+        Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
+      } else {
+        Z3_optimize_minimize(builder->ctx, theSolver, initial_read);
+      }
     }
   }
 
@@ -318,8 +318,8 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
   }
 
   ::Z3_lbool satisfiable = Z3_optimize_check(builder->ctx, theSolver);
-  runStatusCode = handleOptimizeResponse(
-      theSolver, satisfiable, objects, infinity, values, epsilon, hasSolution);
+  runStatusCode = handleOptimizeResponse(theSolver, satisfiable, objects,
+                                         values, hasSolution, maximize);
 
   Z3_optimize_dec_ref(builder->ctx, theSolver);
   // Clear the builder's cache to prevent memory usage exploding.
@@ -439,9 +439,9 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
 
 SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
     ::Z3_optimize theSolver, ::Z3_lbool satisfiable,
-    const std::vector<const Array *> *objects, std::vector<bool> *infinity,
-    std::vector<std::pair<int, double> > *values, std::vector<bool> *epsilon,
-    bool &hasSolution) {
+    const std::vector<const Array *> *objects,
+    std::vector<std::pair<int, double> > *values, bool &hasSolution,
+    bool maximize) {
   switch (satisfiable) {
   case Z3_L_TRUE: {
     hasSolution = true;
@@ -456,24 +456,25 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
     for (unsigned idx = 0; idx < objects->size(); ++idx) {
       std::vector<unsigned char> data;
 
-      ::Z3_ast_vector upperBoundVector =
-          Z3_optimize_get_upper_as_vector(builder->ctx, theSolver, idx);
+      ::Z3_ast_vector boundVector =
+          maximize
+              ? Z3_optimize_get_upper_as_vector(builder->ctx, theSolver, idx)
+              : Z3_optimize_get_lower_as_vector(builder->ctx, theSolver, idx);
 
-      Z3_ast_vector_inc_ref(builder->ctx, upperBoundVector);
+      Z3_ast_vector_inc_ref(builder->ctx, boundVector);
 
       ::Z3_ast infinityCoefficient =
-          Z3_ast_vector_get(builder->ctx, upperBoundVector, 0);
-      ::Z3_ast upperBound =
-          Z3_ast_vector_get(builder->ctx, upperBoundVector, 1);
+          Z3_ast_vector_get(builder->ctx, boundVector, 0);
+      ::Z3_ast bound = Z3_ast_vector_get(builder->ctx, boundVector, 1);
       ::Z3_ast epsilonCoefficient =
-          Z3_ast_vector_get(builder->ctx, upperBoundVector, 2);
+          Z3_ast_vector_get(builder->ctx, boundVector, 2);
 
       if (DebugPrecision) {
         llvm::errs()
             << "(infinity_coefficient, upper_bound, epsilon_coefficient) = ";
         llvm::errs() << "(" << Z3_ast_to_string(builder->ctx,
                                                 infinityCoefficient) << ",";
-        llvm::errs() << Z3_ast_to_string(builder->ctx, upperBound) << ",";
+        llvm::errs() << Z3_ast_to_string(builder->ctx, bound) << ",";
         llvm::errs() << Z3_ast_to_string(builder->ctx, epsilonCoefficient)
                      << ")\n";
       }
@@ -496,27 +497,25 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
         continue;
       }
 
-      int upperBoundValue = 0;
+      int boundValue = 0;
       double result;
 
-      successGet =
-          Z3_get_numeral_int(builder->ctx, upperBound, &upperBoundValue);
+      successGet = Z3_get_numeral_int(builder->ctx, bound, &boundValue);
       if (successGet) {
-        result = upperBoundValue;
+        result = boundValue;
       } else {
         int numerator, denominator;
         bool successNumerator = Z3_get_numeral_int(
-            builder->ctx, Z3_get_numerator(builder->ctx, upperBound),
-            &numerator);
+            builder->ctx, Z3_get_numerator(builder->ctx, bound), &numerator);
         bool successDenominator = Z3_get_numeral_int(
-            builder->ctx, Z3_get_denominator(builder->ctx, upperBound),
+            builder->ctx, Z3_get_denominator(builder->ctx, bound),
             &denominator);
 
         assert(successNumerator && successDenominator &&
                "failed to get value back");
         result = ((double)numerator) / ((double)denominator);
       }
-      Z3_dec_ref(builder->ctx, upperBound);
+      Z3_dec_ref(builder->ctx, bound);
 
       values->push_back(std::pair<int, double>(0, result));
     }

@@ -470,13 +470,11 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
         cm.addConstraint(*it);
       }
 
-      std::vector<bool> infinity;
       std::vector<std::pair<int, double> > values;
-      std::vector<bool> epsilon;
       bool hasSolution;
       Query queryWithFalse(cm, ConstantExpr::create(0, Expr::Bool));
       bool success = executor.errorSolver->computeOptimalValues(
-          queryWithFalse, objects, infinity, values, epsilon, hasSolution);
+          queryWithFalse, objects, values, hasSolution, true);
 
       assert(success && hasSolution && "state has invalid constraint set");
 

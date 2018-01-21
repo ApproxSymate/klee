@@ -3786,6 +3786,42 @@ void Executor::terminateStateOnExit(ExecutionState &state) {
   if (!OnlyOutputStatesCoveringNew || state.coveredNew || 
       (AlwaysOutputSeeds && seedMap.count(&state)))
     interpreterHandler->processTestCase(state, 0, 0);
+
+  if (PrecisionError) {
+    std::vector<std::pair<int, double> > upperBoundValues, lowerBoundValues;
+    std::vector<std::vector<unsigned char> > values;
+    bool hasSolution;
+    bool success;
+    ConstraintManager &cm = state.symbolicError->getConstraintsWithError();
+
+    std::set<const Array *> objectsSet;
+    for (ConstraintManager::const_iterator it = cm.begin(), ie = cm.end();
+         it != ie; ++it) {
+      std::vector<const Array *> addedObjects;
+      findSymbolicObjects(*it, addedObjects);
+      objectsSet.insert(addedObjects.back());
+    }
+
+    std::vector<const Array *> objects;
+    for (std::set<const Array *>::const_iterator it = objectsSet.begin(),
+                                                 ie = objectsSet.end();
+         it != ie; ++it) {
+      objects.push_back(*it);
+    }
+
+    Query queryWithFalse(cm, ConstantExpr::create(0, Expr::Bool));
+
+    // Solution: Note that values can pack floating points
+    success = errorSolver->getInitialValues(queryWithFalse, objects, values);
+
+    // Maximization to compute upper bounds
+    success = errorSolver->computeOptimalValues(
+        queryWithFalse, objects, upperBoundValues, hasSolution, true);
+
+    // Minimization to compute lower bounds
+    success = errorSolver->computeOptimalValues(
+        queryWithFalse, objects, lowerBoundValues, hasSolution, false);
+  }
   terminateState(state);
 }
 

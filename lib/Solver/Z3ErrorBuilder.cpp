@@ -56,8 +56,10 @@ void Z3ErrorArrayExprHash::clear() {
   _array_hash.clear();
 }
 
-Z3ErrorBuilder::Z3ErrorBuilder(bool autoClearConstructCache)
+Z3ErrorBuilder::Z3ErrorBuilder(bool _real, bool autoClearConstructCache)
     : autoClearConstructCache(autoClearConstructCache) {
+  real = _real;
+
   // FIXME: Should probably let the client pass in a Z3_config instead
   Z3_config cfg = Z3_mk_config();
   // It is very important that we ask Z3 to let us manage memory so that
