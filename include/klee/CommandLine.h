@@ -75,6 +75,8 @@ extern llvm::cl::opt<bool> LoopBreaking;
 
 extern llvm::cl::opt<bool> Scaling;
 
+extern llvm::cl::opt<int> MultiKTest;
+
 #ifdef ENABLE_METASMT
 
 enum MetaSMTBackendType
