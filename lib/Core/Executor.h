@@ -512,11 +512,15 @@ public:
                                 std::string &res,
                                 Interpreter::LogType logFormat = Interpreter::STP);
 
-  virtual bool getSymbolicSolution(const ExecutionState &state, 
-                                   std::vector< 
-                                   std::pair<std::string,
-                                   std::vector<unsigned char> > >
-                                   &res);
+  virtual bool getSymbolicSolution(
+      const ExecutionState &state,
+      std::vector<std::pair<std::string, std::vector<unsigned char> > > &res,
+      std::vector<ref<Expr> > &equalities);
+
+  virtual bool getMultipleSymbolicSolutions(
+      unsigned max, const ExecutionState &state,
+      std::vector<std::vector<
+          std::pair<std::string, std::vector<unsigned char> > > > &res);
 
   virtual void getCoveredLines(const ExecutionState &state,
                                std::map<const std::string*, std::set<unsigned> > &res);
