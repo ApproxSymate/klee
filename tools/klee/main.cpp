@@ -434,9 +434,12 @@ void KleeHandler::processTestCase(const ExecutionState &state,
   }
 
   if (!NoOutput) {
-    std::vector< std::pair<std::string, std::vector<unsigned char> > > out;
-    bool success = m_interpreter->getSymbolicSolution(state, out);
+    std::vector<std::vector<
+        std::pair<std::string, std::vector<unsigned char> > > > outVector;
+    unsigned numberOfTests = MultiKTest > 0 ? MultiKTest : 1;
 
+    bool success = m_interpreter->getMultipleSymbolicSolutions(
+        numberOfTests, state, outVector);
     if (!success)
       klee_warning("unable to get symbolic solution, losing test case");
 
@@ -445,30 +448,50 @@ void KleeHandler::processTestCase(const ExecutionState &state,
     unsigned id = ++m_testIndex;
 
     if (success) {
-      KTest b;
-      b.numArgs = m_argc;
-      b.args = m_argv;
-      b.symArgvs = 0;
-      b.symArgvLen = 0;
-      b.numObjects = out.size();
-      b.objects = new KTestObject[b.numObjects];
-      assert(b.objects);
-      for (unsigned i=0; i<b.numObjects; i++) {
-        KTestObject *o = &b.objects[i];
-        o->name = const_cast<char*>(out[i].first.c_str());
-        o->numBytes = out[i].second.size();
-        o->bytes = new unsigned char[o->numBytes];
-        assert(o->bytes);
-        std::copy(out[i].second.begin(), out[i].second.end(), o->bytes);
-      }
+      unsigned ktestIndex = 1;
+      for (std::vector<std::vector<
+               std::pair<std::string, std::vector<unsigned char> > > >::iterator
+               it = outVector.begin(),
+               ie = outVector.end();
+           it != ie; ++it) {
+        std::vector<std::pair<std::string, std::vector<unsigned char> > > &out =
+            *it;
 
-      if (!kTest_toFile(&b, getOutputFilename(getTestFilename("ktest", id)).c_str())) {
-        klee_warning("unable to write output test case, losing it");
-      }
+        KTest b;
+        b.numArgs = m_argc;
+        b.args = m_argv;
+        b.symArgvs = 0;
+        b.symArgvLen = 0;
+        b.numObjects = out.size();
+        b.objects = new KTestObject[b.numObjects];
+        assert(b.objects);
+        for (unsigned i = 0; i < b.numObjects; i++) {
+          KTestObject *o = &b.objects[i];
+          o->name = const_cast<char *>(out[i].first.c_str());
+          o->numBytes = out[i].second.size();
+          o->bytes = new unsigned char[o->numBytes];
+          assert(o->bytes);
+          std::copy(out[i].second.begin(), out[i].second.end(), o->bytes);
+        }
 
-      for (unsigned i=0; i<b.numObjects; i++)
-        delete[] b.objects[i].bytes;
-      delete[] b.objects;
+        std::stringstream extStream;
+        extStream << "ktest";
+        if (numberOfTests > 1) {
+          extStream << ktestIndex;
+        }
+        std::string ext = extStream.str();
+
+        if (!kTest_toFile(
+                 &b, getOutputFilename(getTestFilename(ext, id)).c_str())) {
+          klee_warning("unable to write output test case, losing it");
+        }
+
+        for (unsigned i = 0; i < b.numObjects; i++)
+          delete[] b.objects[i].bytes;
+        delete[] b.objects;
+
+        ktestIndex++;
+      }
     }
 
     if (errorMessage) {

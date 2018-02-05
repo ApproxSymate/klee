@@ -4634,11 +4634,10 @@ void Executor::getConstraintLog(const ExecutionState &state, std::string &res,
   }
 }
 
-bool Executor::getSymbolicSolution(const ExecutionState &state,
-                                   std::vector< 
-                                   std::pair<std::string,
-                                   std::vector<unsigned char> > >
-                                   &res) {
+bool Executor::getSymbolicSolution(
+    const ExecutionState &state,
+    std::vector<std::pair<std::string, std::vector<unsigned char> > > &res,
+    std::vector<ref<Expr> > &equalities) {
   solver->setTimeout(coreSolverTimeout);
 
   ExecutionState tmp(state);
@@ -4684,10 +4683,55 @@ bool Executor::getSymbolicSolution(const ExecutionState &state,
                              ConstantExpr::alloc(0, Expr::Bool));
     return false;
   }
-  
-  for (unsigned i = 0; i != state.symbolics.size(); ++i)
+
+  for (unsigned i = 0; i != state.symbolics.size(); ++i) {
+    const Array *array = state.symbolics[i].second;
+    UpdateList ul(array, 0);
+
     res.push_back(std::make_pair(state.symbolics[i].first->name, values[i]));
+
+    for (unsigned j = 0; j < values[i].size(); ++j) {
+      ref<Expr> readExpr =
+          ReadExpr::create(ul, ConstantExpr::create(j, Expr::Int32));
+      ref<Expr> valueExpr = ConstantExpr::create(values[i][j], Expr::Int8);
+      equalities.push_back(EqExpr::create(readExpr, valueExpr));
+    }
+  }
   return true;
+}
+
+bool Executor::getMultipleSymbolicSolutions(
+    unsigned max, const ExecutionState &state,
+    std::vector<std::vector<
+        std::pair<std::string, std::vector<unsigned char> > > > &res) {
+  ExecutionState tmp(state);
+
+  for (unsigned i = 0; i < max; ++i) {
+    std::vector<std::pair<std::string, std::vector<unsigned char> > > elem;
+    std::vector<ref<Expr> > equalities;
+    if (!getSymbolicSolution(tmp, elem, equalities))
+      break;
+    res.push_back(elem);
+
+    // Add the constraints for the next iteration
+    if (equalities.size()) {
+      ref<Expr> extraConstraints;
+      for (std::vector<ref<Expr> >::iterator it = equalities.begin(),
+                                             ie = equalities.end();
+           it != ie; ++it) {
+        if (extraConstraints.isNull()) {
+          extraConstraints = *it;
+        } else {
+          extraConstraints = AndExpr::create(*it, extraConstraints);
+        }
+      }
+      tmp.addConstraint(EqExpr::create(extraConstraints,
+                                       ConstantExpr::create(0, Expr::Bool)));
+    }
+  }
+  if (res.size())
+    return true;
+  return false;
 }
 
 void Executor::getCoveredLines(const ExecutionState &state,
