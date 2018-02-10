@@ -22,7 +22,8 @@ namespace klee {
 
 class Z3ErrorSolverImpl : public SolverImpl {
 private:
-  Z3ErrorBuilder *builder;
+  Z3ErrorBuilder *errorBoundBuilder;
+  Z3ErrorBuilder *pathConditionBuilder;
   double timeout;
   SolverRunStatus runStatusCode;
   ::Z3_params solverParameters;
@@ -52,8 +53,8 @@ public:
     unsigned int timeoutInMilliSeconds = (unsigned int)((timeout * 1000) + 0.5);
     if (timeoutInMilliSeconds == 0)
       timeoutInMilliSeconds = UINT_MAX;
-    Z3_params_set_uint(builder->ctx, solverParameters, timeoutParamStrSymbol,
-                       timeoutInMilliSeconds);
+    Z3_params_set_uint(errorBoundBuilder->ctx, solverParameters,
+                       timeoutParamStrSymbol, timeoutInMilliSeconds);
   }
 
   bool computeTruth(const Query &, bool &isValid);
@@ -82,27 +83,31 @@ public:
 };
 
 Z3ErrorSolverImpl::Z3ErrorSolverImpl()
-    : builder(new Z3ErrorBuilder(/*autoClearConstructCache=*/false)),
+    : errorBoundBuilder(new Z3ErrorBuilder(ComputeErrorBound == VIA_INTEGER,
+                                           /*autoClearConstructCache=*/false)),
+      pathConditionBuilder(
+          new Z3ErrorBuilder(false, /*autoClearConstructCache=*/false)),
       timeout(0.0), runStatusCode(SOLVER_RUN_STATUS_FAILURE) {
-  assert(builder && "unable to create Z3Builder");
-  solverParameters = Z3_mk_params(builder->ctx);
-  Z3_params_inc_ref(builder->ctx, solverParameters);
-  timeoutParamStrSymbol = Z3_mk_string_symbol(builder->ctx, "timeout");
+  assert(errorBoundBuilder && "unable to create Z3Builder");
+  solverParameters = Z3_mk_params(errorBoundBuilder->ctx);
+  Z3_params_inc_ref(errorBoundBuilder->ctx, solverParameters);
+  timeoutParamStrSymbol =
+      Z3_mk_string_symbol(errorBoundBuilder->ctx, "timeout");
   setCoreSolverTimeout(timeout);
 
   if (!UniformInputError) {
     // Set pareto optimality as priority strategy
     ::Z3_symbol priorityParamStrSymbol =
-        Z3_mk_string_symbol(builder->ctx, "priority");
-    ::Z3_symbol pareto = Z3_mk_string_symbol(builder->ctx, "pareto");
-    Z3_params_set_symbol(builder->ctx, solverParameters, priorityParamStrSymbol,
-                         pareto);
+        Z3_mk_string_symbol(errorBoundBuilder->ctx, "priority");
+    ::Z3_symbol pareto = Z3_mk_string_symbol(errorBoundBuilder->ctx, "pareto");
+    Z3_params_set_symbol(errorBoundBuilder->ctx, solverParameters,
+                         priorityParamStrSymbol, pareto);
   }
 }
 
 Z3ErrorSolverImpl::~Z3ErrorSolverImpl() {
-  Z3_params_dec_ref(builder->ctx, solverParameters);
-  delete builder;
+  Z3_params_dec_ref(errorBoundBuilder->ctx, solverParameters);
+  delete errorBoundBuilder;
 }
 
 Z3ErrorSolver::Z3ErrorSolver() : Solver(new Z3ErrorSolverImpl()) {}
@@ -129,7 +134,7 @@ char *Z3ErrorSolverImpl::getConstraintLog(const Query &query) {
   for (std::vector<ref<Expr> >::const_iterator it = query.constraints.begin(),
                                                ie = query.constraints.end();
        it != ie; ++it) {
-    assumptions.push_back(builder->construct(*it));
+    assumptions.push_back(errorBoundBuilder->construct(*it));
   }
   ::Z3_ast *assumptionsArray = NULL;
   int numAssumptions = query.constraints.size();
@@ -145,11 +150,13 @@ char *Z3ErrorSolverImpl::getConstraintLog(const Query &query) {
   // but Z3 works in terms of satisfiability so instead we ask the
   // the negation of the equivalent i.e.
   // ∃ X Constraints(X) ∧ ¬ query(X)
-  Z3ErrorASTHandle formula = Z3ErrorASTHandle(
-      Z3_mk_not(builder->ctx, builder->construct(query.expr)), builder->ctx);
+  Z3ErrorASTHandle formula =
+      Z3ErrorASTHandle(Z3_mk_not(errorBoundBuilder->ctx,
+                                 errorBoundBuilder->construct(query.expr)),
+                       errorBoundBuilder->ctx);
 
   ::Z3_string result = Z3_benchmark_to_smtlib_string(
-      builder->ctx,
+      errorBoundBuilder->ctx,
       /*name=*/"Emited by klee::Z3ErrorSolverImpl::getConstraintLog()",
       /*logic=*/"",
       /*status=*/"unknown",
@@ -213,23 +220,24 @@ bool Z3ErrorSolverImpl::internalRunSolver(
   // impact vs making one global solver and using push and pop?
   // TODO: is the "simple_solver" the right solver to use for
   // best performance?
-  Z3_solver theSolver = Z3_mk_simple_solver(builder->ctx);
-  Z3_solver_inc_ref(builder->ctx, theSolver);
-  Z3_solver_set_params(builder->ctx, theSolver, solverParameters);
+  Z3_solver theSolver = Z3_mk_simple_solver(pathConditionBuilder->ctx);
+  Z3_solver_inc_ref(pathConditionBuilder->ctx, theSolver);
+  Z3_solver_set_params(pathConditionBuilder->ctx, theSolver, solverParameters);
 
   runStatusCode = SOLVER_RUN_STATUS_FAILURE;
 
   for (ConstraintManager::const_iterator it = query.constraints.begin(),
                                          ie = query.constraints.end();
        it != ie; ++it) {
-    Z3_solver_assert(builder->ctx, theSolver, builder->construct(*it));
+    Z3_solver_assert(pathConditionBuilder->ctx, theSolver,
+                     pathConditionBuilder->construct(*it));
   }
   ++stats::queries;
   if (objects)
     ++stats::queryCounterexamples;
 
-  Z3ErrorASTHandle z3QueryExpr =
-      Z3ErrorASTHandle(builder->construct(query.expr), builder->ctx);
+  Z3ErrorASTHandle z3QueryExpr = Z3ErrorASTHandle(
+      pathConditionBuilder->construct(query.expr), pathConditionBuilder->ctx);
 
   // KLEE Queries are validity queries i.e.
   // ∀ X Constraints(X) → query(X)
@@ -237,20 +245,22 @@ bool Z3ErrorSolverImpl::internalRunSolver(
   // negation of the equivalent i.e.
   // ∃ X Constraints(X) ∧ ¬ query(X)
   Z3_solver_assert(
-      builder->ctx, theSolver,
-      Z3ErrorASTHandle(Z3_mk_not(builder->ctx, z3QueryExpr), builder->ctx));
+      pathConditionBuilder->ctx, theSolver,
+      Z3ErrorASTHandle(Z3_mk_not(pathConditionBuilder->ctx, z3QueryExpr),
+                       pathConditionBuilder->ctx));
 
-  ::Z3_lbool satisfiable = Z3_solver_check(builder->ctx, theSolver);
+  ::Z3_lbool satisfiable =
+      Z3_solver_check(pathConditionBuilder->ctx, theSolver);
   runStatusCode = handleSolverResponse(theSolver, satisfiable, objects, values,
                                        hasSolution);
 
-  Z3_solver_dec_ref(builder->ctx, theSolver);
+  Z3_solver_dec_ref(pathConditionBuilder->ctx, theSolver);
   // Clear the builder's cache to prevent memory usage exploding.
   // By using ``autoClearConstructCache=false`` and clearning now
   // we allow Z3_ast expressions to be shared from an entire
   // ``Query`` rather than only sharing within a single call to
   // ``builder->construct()``.
-  builder->clearConstructCache();
+  pathConditionBuilder->clearConstructCache();
 
   if (runStatusCode == SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE ||
       runStatusCode == SolverImpl::SOLVER_RUN_STATUS_SUCCESS_UNSOLVABLE) {
@@ -273,16 +283,17 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
   // impact vs making one global solver and using push and pop?
   // TODO: is the "simple_solver" the right solver to use for
   // best performance?
-  Z3_optimize theSolver = Z3_mk_optimize(builder->ctx);
-  Z3_optimize_inc_ref(builder->ctx, theSolver);
-  Z3_optimize_set_params(builder->ctx, theSolver, solverParameters);
+  Z3_optimize theSolver = Z3_mk_optimize(errorBoundBuilder->ctx);
+  Z3_optimize_inc_ref(errorBoundBuilder->ctx, theSolver);
+  Z3_optimize_set_params(errorBoundBuilder->ctx, theSolver, solverParameters);
 
   runStatusCode = SOLVER_RUN_STATUS_FAILURE;
 
   for (ConstraintManager::const_iterator it = query.constraints.begin(),
                                          ie = query.constraints.end();
        it != ie; ++it) {
-    Z3_optimize_assert(builder->ctx, theSolver, builder->construct(*it));
+    Z3_optimize_assert(errorBoundBuilder->ctx, theSolver,
+                       errorBoundBuilder->construct(*it));
   }
   ++stats::queries;
   if (objects)
@@ -297,13 +308,14 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
     switch (ComputeErrorBound) {
     case VIA_INTEGER: {
       Z3ErrorASTHandle initial_read =
-          builder->buildInteger(array->name.c_str());
-      Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
+          errorBoundBuilder->buildInteger(array->name.c_str());
+      Z3_optimize_maximize(errorBoundBuilder->ctx, theSolver, initial_read);
       break;
     }
     case VIA_REAL: {
-      Z3ErrorASTHandle initial_read = builder->buildReal(array->name.c_str());
-      Z3_optimize_maximize(builder->ctx, theSolver, initial_read);
+      Z3ErrorASTHandle initial_read =
+          errorBoundBuilder->buildReal(array->name.c_str());
+      Z3_optimize_maximize(errorBoundBuilder->ctx, theSolver, initial_read);
       break;
     }
     default:
@@ -313,21 +325,21 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
 
   if (DebugPrecision) {
     llvm::errs() << "Solving:\n";
-    llvm::errs() << Z3_optimize_to_string(builder->ctx, theSolver);
+    llvm::errs() << Z3_optimize_to_string(errorBoundBuilder->ctx, theSolver);
     llvm::errs() << "\n";
   }
 
-  ::Z3_lbool satisfiable = Z3_optimize_check(builder->ctx, theSolver);
+  ::Z3_lbool satisfiable = Z3_optimize_check(errorBoundBuilder->ctx, theSolver);
   runStatusCode = handleOptimizeResponse(
       theSolver, satisfiable, objects, infinity, values, epsilon, hasSolution);
 
-  Z3_optimize_dec_ref(builder->ctx, theSolver);
+  Z3_optimize_dec_ref(errorBoundBuilder->ctx, theSolver);
   // Clear the builder's cache to prevent memory usage exploding.
   // By using ``autoClearConstructCache=false`` and clearning now
   // we allow Z3_ast expressions to be shared from an entire
   // ``Query`` rather than only sharing within a single call to
   // ``builder->construct()``.
-  builder->clearConstructCache();
+  errorBoundBuilder->clearConstructCache();
 
   if (runStatusCode == SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE ||
       runStatusCode == SolverImpl::SOLVER_RUN_STATUS_SUCCESS_UNSOLVABLE) {
@@ -354,9 +366,10 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
       return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE;
     }
     assert(values && "values cannot be nullptr");
-    ::Z3_model theModel = Z3_solver_get_model(builder->ctx, theSolver);
+    ::Z3_model theModel =
+        Z3_solver_get_model(errorBoundBuilder->ctx, theSolver);
     assert(theModel && "Failed to retrieve model");
-    Z3_model_inc_ref(builder->ctx, theModel);
+    Z3_model_inc_ref(errorBoundBuilder->ctx, theModel);
     values->reserve(objects->size());
     for (std::vector<const Array *>::const_iterator it = objects->begin(),
                                                     ie = objects->end();
@@ -369,23 +382,24 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
 
       // We can't use Z3ASTHandle here so have to do ref counting manually
       ::Z3_ast arrayElementExpr;
-      Z3ErrorASTHandle initial_read = builder->getInitialRead(array, offset);
+      Z3ErrorASTHandle initial_read =
+          errorBoundBuilder->getInitialRead(array, offset);
 
       bool successfulEval =
-          Z3_model_eval(builder->ctx, theModel, initial_read,
+          Z3_model_eval(errorBoundBuilder->ctx, theModel, initial_read,
                         /*model_completion=*/Z3_TRUE, &arrayElementExpr);
       if (!successfulEval) {
         assert(!"Failed to evaluate model");
       }
 
-      Z3_inc_ref(builder->ctx, arrayElementExpr);
-      assert(Z3_get_ast_kind(builder->ctx, arrayElementExpr) ==
+      Z3_inc_ref(errorBoundBuilder->ctx, arrayElementExpr);
+      assert(Z3_get_ast_kind(errorBoundBuilder->ctx, arrayElementExpr) ==
                  Z3_NUMERAL_AST &&
              "Evaluated expression has wrong sort");
 
       int arrayElementValue = 0;
-      bool successGet = Z3_get_numeral_int(builder->ctx, arrayElementExpr,
-                                           &arrayElementValue);
+      bool successGet = Z3_get_numeral_int(
+          errorBoundBuilder->ctx, arrayElementExpr, &arrayElementValue);
       if (successGet) {
         for (int i = 0; i < 8; ++i) {
           data.push_back(arrayElementValue & 255);
@@ -394,10 +408,12 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
       } else {
         int numerator, denominator;
         bool successNumerator = Z3_get_numeral_int(
-            builder->ctx, Z3_get_numerator(builder->ctx, arrayElementExpr),
+            errorBoundBuilder->ctx,
+            Z3_get_numerator(errorBoundBuilder->ctx, arrayElementExpr),
             &numerator);
         bool successDenominator = Z3_get_numeral_int(
-            builder->ctx, Z3_get_denominator(builder->ctx, arrayElementExpr),
+            errorBoundBuilder->ctx,
+            Z3_get_denominator(errorBoundBuilder->ctx, arrayElementExpr),
             &denominator);
 
         if (!(successNumerator && successDenominator))
@@ -413,12 +429,12 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
           intResult = intResult >> 8;
         }
       }
-      Z3_dec_ref(builder->ctx, arrayElementExpr);
+      Z3_dec_ref(errorBoundBuilder->ctx, arrayElementExpr);
 
       values->push_back(data);
     }
 
-    Z3_model_dec_ref(builder->ctx, theModel);
+    Z3_model_dec_ref(errorBoundBuilder->ctx, theModel);
     return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE;
   }
   case Z3_L_FALSE:
@@ -426,7 +442,7 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
     return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_UNSOLVABLE;
   case Z3_L_UNDEF: {
     ::Z3_string reason =
-        ::Z3_solver_get_reason_unknown(builder->ctx, theSolver);
+        ::Z3_solver_get_reason_unknown(errorBoundBuilder->ctx, theSolver);
     if (strcmp(reason, "timeout") == 0 || strcmp(reason, "canceled") == 0) {
       return SolverImpl::SOLVER_RUN_STATUS_TIMEOUT;
     }
@@ -460,40 +476,41 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
     for (unsigned idx = 0; idx < objects->size(); ++idx) {
       std::vector<unsigned char> data;
 
-      ::Z3_ast_vector upperBoundVector =
-          Z3_optimize_get_upper_as_vector(builder->ctx, theSolver, idx);
+      ::Z3_ast_vector upperBoundVector = Z3_optimize_get_upper_as_vector(
+          errorBoundBuilder->ctx, theSolver, idx);
 
-      Z3_ast_vector_inc_ref(builder->ctx, upperBoundVector);
+      Z3_ast_vector_inc_ref(errorBoundBuilder->ctx, upperBoundVector);
 
       ::Z3_ast infinityCoefficient =
-          Z3_ast_vector_get(builder->ctx, upperBoundVector, 0);
+          Z3_ast_vector_get(errorBoundBuilder->ctx, upperBoundVector, 0);
       ::Z3_ast upperBound =
-          Z3_ast_vector_get(builder->ctx, upperBoundVector, 1);
+          Z3_ast_vector_get(errorBoundBuilder->ctx, upperBoundVector, 1);
       ::Z3_ast epsilonCoefficient =
-          Z3_ast_vector_get(builder->ctx, upperBoundVector, 2);
+          Z3_ast_vector_get(errorBoundBuilder->ctx, upperBoundVector, 2);
 
       if (DebugPrecision) {
         llvm::errs()
             << "(infinity_coefficient, upper_bound, epsilon_coefficient) = ";
-        llvm::errs() << "(" << Z3_ast_to_string(builder->ctx,
+        llvm::errs() << "(" << Z3_ast_to_string(errorBoundBuilder->ctx,
                                                 infinityCoefficient) << ",";
-        llvm::errs() << Z3_ast_to_string(builder->ctx, upperBound) << ",";
-        llvm::errs() << Z3_ast_to_string(builder->ctx, epsilonCoefficient)
-                     << ")\n";
+        llvm::errs() << Z3_ast_to_string(errorBoundBuilder->ctx, upperBound)
+                     << ",";
+        llvm::errs() << Z3_ast_to_string(errorBoundBuilder->ctx,
+                                         epsilonCoefficient) << ")\n";
       }
 
       int infinity = 0;
       int epsilon = 0;
-      bool successGet =
-          Z3_get_numeral_int(builder->ctx, infinityCoefficient, &infinity);
+      bool successGet = Z3_get_numeral_int(errorBoundBuilder->ctx,
+                                           infinityCoefficient, &infinity);
 
       if (successGet && infinity) {
         values->push_back(std::pair<int, double>(1, 0));
         continue;
       }
 
-      successGet =
-          Z3_get_numeral_int(builder->ctx, epsilonCoefficient, &epsilon);
+      successGet = Z3_get_numeral_int(errorBoundBuilder->ctx,
+                                      epsilonCoefficient, &epsilon);
 
       if (successGet && epsilon) {
         values->push_back(std::pair<int, double>(2, 0));
@@ -503,17 +520,18 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
       int upperBoundValue = 0;
       double result;
 
-      successGet =
-          Z3_get_numeral_int(builder->ctx, upperBound, &upperBoundValue);
+      successGet = Z3_get_numeral_int(errorBoundBuilder->ctx, upperBound,
+                                      &upperBoundValue);
       if (successGet) {
         result = upperBoundValue;
       } else {
         int numerator, denominator;
         bool successNumerator = Z3_get_numeral_int(
-            builder->ctx, Z3_get_numerator(builder->ctx, upperBound),
-            &numerator);
+            errorBoundBuilder->ctx,
+            Z3_get_numerator(errorBoundBuilder->ctx, upperBound), &numerator);
         bool successDenominator = Z3_get_numeral_int(
-            builder->ctx, Z3_get_denominator(builder->ctx, upperBound),
+            errorBoundBuilder->ctx,
+            Z3_get_denominator(errorBoundBuilder->ctx, upperBound),
             &denominator);
 
         if (!(successNumerator && successDenominator))
@@ -521,7 +539,7 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
 
         result = ((double)numerator) / ((double)denominator);
       }
-      Z3_dec_ref(builder->ctx, upperBound);
+      Z3_dec_ref(errorBoundBuilder->ctx, upperBound);
 
       values->push_back(std::pair<int, double>(0, result));
     }
@@ -533,7 +551,7 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
     return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_UNSOLVABLE;
   case Z3_L_UNDEF: {
     ::Z3_string reason =
-        ::Z3_optimize_get_reason_unknown(builder->ctx, theSolver);
+        ::Z3_optimize_get_reason_unknown(errorBoundBuilder->ctx, theSolver);
     if (strcmp(reason, "timeout") == 0 || strcmp(reason, "canceled") == 0) {
       return SolverImpl::SOLVER_RUN_STATUS_TIMEOUT;
     }
