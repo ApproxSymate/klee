@@ -4700,6 +4700,39 @@ bool Executor::getSymbolicSolution(
   return true;
 }
 
+bool Executor::getRealSymbolicSolution(
+    const ExecutionState &state,
+    std::vector<std::pair<std::string, double> > &res) {
+  std::vector<std::vector<unsigned char> > values;
+  std::vector<const Array *> objects;
+
+  for (unsigned i = 0; i != state.symbolics.size(); ++i)
+    objects.push_back(state.symbolics[i].second);
+  bool success = errorSolver->getInitialValues(
+      Query(state.constraints, ConstantExpr::alloc(0, Expr::Bool)), objects,
+      values);
+  if (!success) {
+    klee_warning("unable to compute initial values (invalid constraints?)!");
+    ExprPPrinter::printQuery(llvm::errs(), state.constraints,
+                             ConstantExpr::alloc(0, Expr::Bool));
+    return false;
+  }
+
+  for (unsigned i = 0; i != state.symbolics.size(); ++i) {
+    std::vector<unsigned char> &charVector = values[i];
+    double realValue;
+
+    if (charVector.size() == 8) {
+      for (unsigned j = 0; j < 8; ++j) {
+        ((unsigned char *)&realValue)[j] = charVector[j];
+      }
+      res.push_back(std::make_pair(state.symbolics[i].first->name, realValue));
+    }
+  }
+
+  return true;
+}
+
 bool Executor::getMultipleSymbolicSolutions(
     unsigned max, const ExecutionState &state,
     std::vector<std::vector<

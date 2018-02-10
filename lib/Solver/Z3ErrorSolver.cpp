@@ -374,7 +374,10 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
       bool successfulEval =
           Z3_model_eval(builder->ctx, theModel, initial_read,
                         /*model_completion=*/Z3_TRUE, &arrayElementExpr);
-      assert(successfulEval && "Failed to evaluate model");
+      if (!successfulEval) {
+        assert(!"Failed to evaluate model");
+      }
+
       Z3_inc_ref(builder->ctx, arrayElementExpr);
       assert(Z3_get_ast_kind(builder->ctx, arrayElementExpr) ==
                  Z3_NUMERAL_AST &&
@@ -397,8 +400,9 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
             builder->ctx, Z3_get_denominator(builder->ctx, arrayElementExpr),
             &denominator);
 
-        assert(successNumerator && successDenominator &&
-               "failed to get value back");
+        if (!(successNumerator && successDenominator))
+          assert(!"failed to get value back");
+
         double result = ((double)numerator) / ((double)denominator);
 
         uint64_t intResult = 0;
@@ -512,8 +516,9 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleOptimizeResponse(
             builder->ctx, Z3_get_denominator(builder->ctx, upperBound),
             &denominator);
 
-        assert(successNumerator && successDenominator &&
-               "failed to get value back");
+        if (!(successNumerator && successDenominator))
+          assert(!"failed to get value back");
+
         result = ((double)numerator) / ((double)denominator);
       }
       Z3_dec_ref(builder->ctx, upperBound);
