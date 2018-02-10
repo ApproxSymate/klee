@@ -609,19 +609,21 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       delete f;
     }
 
-    // Output the real number solution
-    std::vector<std::pair<std::string, double> > realSolutions;
-    success = m_interpreter->getRealSymbolicSolution(state, realSolutions);
+    if (ComputeRealSolution) {
+      // Output the real number solution
+      std::vector<std::pair<std::string, double> > realSolutions;
+      success = m_interpreter->getRealSymbolicSolution(state, realSolutions);
 
-    if (success && realSolutions.size() > 0) {
-      llvm::raw_ostream *f = openTestFile("reals", id);
-      for (std::vector<std::pair<std::string, double> >::iterator
-               it = realSolutions.begin(),
-               ie = realSolutions.end();
-           it != ie; ++it) {
-        *f << it->first << " : " << it->second << "\n";
+      if (success && realSolutions.size() > 0) {
+        llvm::raw_ostream *f = openTestFile("reals", id);
+        for (std::vector<std::pair<std::string, double> >::iterator
+                 it = realSolutions.begin(),
+                 ie = realSolutions.end();
+             it != ie; ++it) {
+          *f << it->first << " : " << it->second << "\n";
+        }
+        delete f;
       }
-      delete f;
     }
   }
 }
