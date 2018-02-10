@@ -26,7 +26,8 @@ private:
   Z3ErrorBuilder *pathConditionBuilder;
   double timeout;
   SolverRunStatus runStatusCode;
-  ::Z3_params solverParameters;
+  ::Z3_params errorBoundSolverParameter;
+  ::Z3_params pathConditionSolverParameter;
   // Parameter symbols
   ::Z3_symbol timeoutParamStrSymbol;
 
@@ -53,7 +54,9 @@ public:
     unsigned int timeoutInMilliSeconds = (unsigned int)((timeout * 1000) + 0.5);
     if (timeoutInMilliSeconds == 0)
       timeoutInMilliSeconds = UINT_MAX;
-    Z3_params_set_uint(errorBoundBuilder->ctx, solverParameters,
+    Z3_params_set_uint(errorBoundBuilder->ctx, errorBoundSolverParameter,
+                       timeoutParamStrSymbol, timeoutInMilliSeconds);
+    Z3_params_set_uint(pathConditionBuilder->ctx, pathConditionSolverParameter,
                        timeoutParamStrSymbol, timeoutInMilliSeconds);
   }
 
@@ -89,8 +92,10 @@ Z3ErrorSolverImpl::Z3ErrorSolverImpl()
           new Z3ErrorBuilder(false, /*autoClearConstructCache=*/false)),
       timeout(0.0), runStatusCode(SOLVER_RUN_STATUS_FAILURE) {
   assert(errorBoundBuilder && "unable to create Z3Builder");
-  solverParameters = Z3_mk_params(errorBoundBuilder->ctx);
-  Z3_params_inc_ref(errorBoundBuilder->ctx, solverParameters);
+  errorBoundSolverParameter = Z3_mk_params(errorBoundBuilder->ctx);
+  pathConditionSolverParameter = Z3_mk_params(pathConditionBuilder->ctx);
+  Z3_params_inc_ref(errorBoundBuilder->ctx, errorBoundSolverParameter);
+  Z3_params_inc_ref(errorBoundBuilder->ctx, pathConditionSolverParameter);
   timeoutParamStrSymbol =
       Z3_mk_string_symbol(errorBoundBuilder->ctx, "timeout");
   setCoreSolverTimeout(timeout);
@@ -100,13 +105,14 @@ Z3ErrorSolverImpl::Z3ErrorSolverImpl()
     ::Z3_symbol priorityParamStrSymbol =
         Z3_mk_string_symbol(errorBoundBuilder->ctx, "priority");
     ::Z3_symbol pareto = Z3_mk_string_symbol(errorBoundBuilder->ctx, "pareto");
-    Z3_params_set_symbol(errorBoundBuilder->ctx, solverParameters,
+    Z3_params_set_symbol(errorBoundBuilder->ctx, errorBoundSolverParameter,
                          priorityParamStrSymbol, pareto);
   }
 }
 
 Z3ErrorSolverImpl::~Z3ErrorSolverImpl() {
-  Z3_params_dec_ref(errorBoundBuilder->ctx, solverParameters);
+  Z3_params_dec_ref(errorBoundBuilder->ctx, errorBoundSolverParameter);
+  Z3_params_dec_ref(pathConditionBuilder->ctx, pathConditionSolverParameter);
   delete errorBoundBuilder;
 }
 
@@ -222,7 +228,8 @@ bool Z3ErrorSolverImpl::internalRunSolver(
   // best performance?
   Z3_solver theSolver = Z3_mk_simple_solver(pathConditionBuilder->ctx);
   Z3_solver_inc_ref(pathConditionBuilder->ctx, theSolver);
-  Z3_solver_set_params(pathConditionBuilder->ctx, theSolver, solverParameters);
+  Z3_solver_set_params(pathConditionBuilder->ctx, theSolver,
+                       pathConditionSolverParameter);
 
   runStatusCode = SOLVER_RUN_STATUS_FAILURE;
 
@@ -285,7 +292,8 @@ bool Z3ErrorSolverImpl::internalRunOptimize(
   // best performance?
   Z3_optimize theSolver = Z3_mk_optimize(errorBoundBuilder->ctx);
   Z3_optimize_inc_ref(errorBoundBuilder->ctx, theSolver);
-  Z3_optimize_set_params(errorBoundBuilder->ctx, theSolver, solverParameters);
+  Z3_optimize_set_params(errorBoundBuilder->ctx, theSolver,
+                         errorBoundSolverParameter);
 
   runStatusCode = SOLVER_RUN_STATUS_FAILURE;
 
@@ -367,9 +375,9 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
     }
     assert(values && "values cannot be nullptr");
     ::Z3_model theModel =
-        Z3_solver_get_model(errorBoundBuilder->ctx, theSolver);
+        Z3_solver_get_model(pathConditionBuilder->ctx, theSolver);
     assert(theModel && "Failed to retrieve model");
-    Z3_model_inc_ref(errorBoundBuilder->ctx, theModel);
+    Z3_model_inc_ref(pathConditionBuilder->ctx, theModel);
     values->reserve(objects->size());
     for (std::vector<const Array *>::const_iterator it = objects->begin(),
                                                     ie = objects->end();
@@ -383,23 +391,23 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
       // We can't use Z3ASTHandle here so have to do ref counting manually
       ::Z3_ast arrayElementExpr;
       Z3ErrorASTHandle initial_read =
-          errorBoundBuilder->getInitialRead(array, offset);
+          pathConditionBuilder->getInitialRead(array, offset);
 
       bool successfulEval =
-          Z3_model_eval(errorBoundBuilder->ctx, theModel, initial_read,
+          Z3_model_eval(pathConditionBuilder->ctx, theModel, initial_read,
                         /*model_completion=*/Z3_TRUE, &arrayElementExpr);
       if (!successfulEval) {
         assert(!"Failed to evaluate model");
       }
 
-      Z3_inc_ref(errorBoundBuilder->ctx, arrayElementExpr);
-      assert(Z3_get_ast_kind(errorBoundBuilder->ctx, arrayElementExpr) ==
+      Z3_inc_ref(pathConditionBuilder->ctx, arrayElementExpr);
+      assert(Z3_get_ast_kind(pathConditionBuilder->ctx, arrayElementExpr) ==
                  Z3_NUMERAL_AST &&
              "Evaluated expression has wrong sort");
 
       int arrayElementValue = 0;
       bool successGet = Z3_get_numeral_int(
-          errorBoundBuilder->ctx, arrayElementExpr, &arrayElementValue);
+          pathConditionBuilder->ctx, arrayElementExpr, &arrayElementValue);
       if (successGet) {
         for (int i = 0; i < 8; ++i) {
           data.push_back(arrayElementValue & 255);
@@ -408,12 +416,12 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
       } else {
         int numerator, denominator;
         bool successNumerator = Z3_get_numeral_int(
-            errorBoundBuilder->ctx,
-            Z3_get_numerator(errorBoundBuilder->ctx, arrayElementExpr),
+            pathConditionBuilder->ctx,
+            Z3_get_numerator(pathConditionBuilder->ctx, arrayElementExpr),
             &numerator);
         bool successDenominator = Z3_get_numeral_int(
-            errorBoundBuilder->ctx,
-            Z3_get_denominator(errorBoundBuilder->ctx, arrayElementExpr),
+            pathConditionBuilder->ctx,
+            Z3_get_denominator(pathConditionBuilder->ctx, arrayElementExpr),
             &denominator);
 
         if (!(successNumerator && successDenominator))
@@ -429,12 +437,12 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
           intResult = intResult >> 8;
         }
       }
-      Z3_dec_ref(errorBoundBuilder->ctx, arrayElementExpr);
+      Z3_dec_ref(pathConditionBuilder->ctx, arrayElementExpr);
 
       values->push_back(data);
     }
 
-    Z3_model_dec_ref(errorBoundBuilder->ctx, theModel);
+    Z3_model_dec_ref(pathConditionBuilder->ctx, theModel);
     return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_SOLVABLE;
   }
   case Z3_L_FALSE:
@@ -442,7 +450,7 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
     return SolverImpl::SOLVER_RUN_STATUS_SUCCESS_UNSOLVABLE;
   case Z3_L_UNDEF: {
     ::Z3_string reason =
-        ::Z3_solver_get_reason_unknown(errorBoundBuilder->ctx, theSolver);
+        ::Z3_solver_get_reason_unknown(pathConditionBuilder->ctx, theSolver);
     if (strcmp(reason, "timeout") == 0 || strcmp(reason, "canceled") == 0) {
       return SolverImpl::SOLVER_RUN_STATUS_TIMEOUT;
     }
