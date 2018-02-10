@@ -378,6 +378,7 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
         Z3_solver_get_model(pathConditionBuilder->ctx, theSolver);
     assert(theModel && "Failed to retrieve model");
     Z3_model_inc_ref(pathConditionBuilder->ctx, theModel);
+
     values->reserve(objects->size());
     for (std::vector<const Array *>::const_iterator it = objects->begin(),
                                                     ie = objects->end();
@@ -388,58 +389,67 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
       data.reserve(8);
       unsigned offset = 0;
 
-      // We can't use Z3ASTHandle here so have to do ref counting manually
-      ::Z3_ast arrayElementExpr;
-      Z3ErrorASTHandle initial_read =
-          pathConditionBuilder->getInitialRead(array, offset);
+      unsigned num_constants =
+          Z3_model_get_num_consts(pathConditionBuilder->ctx, theModel);
+      for (unsigned i = 0; i < num_constants; i++) {
+        Z3_symbol name;
+        Z3_func_decl cnst =
+            Z3_model_get_const_decl(pathConditionBuilder->ctx, theModel, i);
+        Z3_ast a, v;
+        Z3_bool ok;
+        name = Z3_get_decl_name(pathConditionBuilder->ctx, cnst);
+        if (Z3_get_symbol_kind(pathConditionBuilder->ctx, name) ==
+            Z3_STRING_SYMBOL) {
+          if (std::string(array->name) ==
+              std::string(
+                  Z3_get_symbol_string(pathConditionBuilder->ctx, name))) {
+            a = Z3_mk_app(pathConditionBuilder->ctx, cnst, 0, 0);
+            v = a;
+            ok = Z3_model_eval(pathConditionBuilder->ctx, theModel, a,
+                               /*model_completion=*/Z3_TRUE, &v);
 
-      bool successfulEval =
-          Z3_model_eval(pathConditionBuilder->ctx, theModel, initial_read,
-                        /*model_completion=*/Z3_TRUE, &arrayElementExpr);
-      if (!successfulEval) {
-        assert(!"Failed to evaluate model");
-      }
+            if (!ok) {
+              assert(!"Failed to evaluate model");
+            }
 
-      Z3_inc_ref(pathConditionBuilder->ctx, arrayElementExpr);
-      assert(Z3_get_ast_kind(pathConditionBuilder->ctx, arrayElementExpr) ==
-                 Z3_NUMERAL_AST &&
-             "Evaluated expression has wrong sort");
+            int arrayElementValue = 0;
+            bool successGet = Z3_get_numeral_int(pathConditionBuilder->ctx, v,
+                                                 &arrayElementValue);
+            if (successGet) {
+              double doubleValue = (double)arrayElementValue;
+              for (int i = 0; i < 8; ++i) {
+                data.push_back(((unsigned char *)(&doubleValue))[i]);
+              }
+            } else {
+              int numerator, denominator;
+              bool successNumerator = Z3_get_numeral_int(
+                  pathConditionBuilder->ctx,
+                  Z3_get_numerator(pathConditionBuilder->ctx, v), &numerator);
+              bool successDenominator = Z3_get_numeral_int(
+                  pathConditionBuilder->ctx,
+                  Z3_get_denominator(pathConditionBuilder->ctx, v),
+                  &denominator);
 
-      int arrayElementValue = 0;
-      bool successGet = Z3_get_numeral_int(
-          pathConditionBuilder->ctx, arrayElementExpr, &arrayElementValue);
-      if (successGet) {
-        for (int i = 0; i < 8; ++i) {
-          data.push_back(arrayElementValue & 255);
-          arrayElementValue = arrayElementValue >> 8;
+              if (!(successNumerator && successDenominator))
+                assert(!"failed to get value back");
+
+              double result = ((double)numerator) / ((double)denominator);
+
+              uint64_t intResult = 0;
+              memcpy(&intResult, &result, 8);
+
+              for (int i = 0; i < 8; ++i) {
+                data.push_back(intResult & 255);
+                intResult = intResult >> 8;
+              }
+            }
+
+            values->push_back(data);
+
+            break;
+          }
         }
-      } else {
-        int numerator, denominator;
-        bool successNumerator = Z3_get_numeral_int(
-            pathConditionBuilder->ctx,
-            Z3_get_numerator(pathConditionBuilder->ctx, arrayElementExpr),
-            &numerator);
-        bool successDenominator = Z3_get_numeral_int(
-            pathConditionBuilder->ctx,
-            Z3_get_denominator(pathConditionBuilder->ctx, arrayElementExpr),
-            &denominator);
-
-        if (!(successNumerator && successDenominator))
-          assert(!"failed to get value back");
-
-        double result = ((double)numerator) / ((double)denominator);
-
-        uint64_t intResult = 0;
-        memcpy(&intResult, &result, 8);
-
-        for (int i = 0; i < 8; ++i) {
-          data.push_back(intResult & 255);
-          intResult = intResult >> 8;
-        }
       }
-      Z3_dec_ref(pathConditionBuilder->ctx, arrayElementExpr);
-
-      values->push_back(data);
     }
 
     Z3_model_dec_ref(pathConditionBuilder->ctx, theModel);
