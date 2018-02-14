@@ -161,12 +161,13 @@ private:
   Z3SortHandle getRealSort();
   Z3SortHandle getIntSort();
   Z3SortHandle getArraySort(Z3SortHandle domainSort, Z3SortHandle rangeSort);
+  bool viaIntegerSolving;
   bool autoClearConstructCache;
 
 public:
   Z3_context ctx;
 
-  Z3ErrorBuilder(bool autoClearConstructCache = true);
+  Z3ErrorBuilder(bool _viaIntegerSolving, bool autoClearConstructCache = true);
   ~Z3ErrorBuilder();
 
   Z3ErrorASTHandle getTrue();

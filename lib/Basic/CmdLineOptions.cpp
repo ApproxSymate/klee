@@ -101,6 +101,11 @@ llvm::cl::opt<ErrorBoundComputationDomain> ComputeErrorBound(
                      clEnumValEnd),
     llvm::cl::init(NO_COMPUTATION));
 
+llvm::cl::opt<bool> ComputeRealSolution(
+    "compute-real-solution",
+    llvm::cl::desc("Output real number solution in .reals file"),
+    llvm::cl::init(false));
+
 llvm::cl::opt<bool> UniformInputError(
     "uniform-input-error",
     llvm::cl::desc(

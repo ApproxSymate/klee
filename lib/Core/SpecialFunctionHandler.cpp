@@ -478,7 +478,8 @@ SpecialFunctionHandler::handleBoundError(ExecutionState &state,
       bool success = executor.errorSolver->computeOptimalValues(
           queryWithFalse, objects, infinity, values, epsilon, hasSolution);
 
-      assert(success && hasSolution && "state has invalid constraint set");
+      if (!(success && hasSolution))
+        assert(!"state has invalid constraint set");
 
       if (DebugPrecision) {
         for (unsigned i = 0; i < inputErrorList.size(); ++i) {

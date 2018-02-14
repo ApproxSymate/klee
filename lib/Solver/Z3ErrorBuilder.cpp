@@ -56,8 +56,10 @@ void Z3ErrorArrayExprHash::clear() {
   _array_hash.clear();
 }
 
-Z3ErrorBuilder::Z3ErrorBuilder(bool autoClearConstructCache)
-    : autoClearConstructCache(autoClearConstructCache) {
+Z3ErrorBuilder::Z3ErrorBuilder(bool _viaIntegerSolving,
+                               bool autoClearConstructCache)
+    : viaIntegerSolving(_viaIntegerSolving),
+      autoClearConstructCache(autoClearConstructCache) {
   // FIXME: Should probably let the client pass in a Z3_config instead
   Z3_config cfg = Z3_mk_config();
   // It is very important that we ask Z3 to let us manage memory so that
@@ -97,7 +99,7 @@ Z3SortHandle Z3ErrorBuilder::getArraySort(Z3SortHandle domainSort,
 Z3ErrorASTHandle Z3ErrorBuilder::buildArray(const char *name) {
   Z3SortHandle domainSort = getIntSort();
   Z3SortHandle rangeSort;
-  if (ComputeErrorBound == VIA_INTEGER) {
+  if (viaIntegerSolving) {
     rangeSort = getIntSort();
   } else {
     rangeSort = getRealSort();
@@ -387,7 +389,7 @@ Z3ErrorASTHandle Z3ErrorBuilder::constructActual(ref<Expr> e) {
         name.erase(0, 9);
         name += "__index__" + so.str();
       }
-      if (ComputeErrorBound == VIA_INTEGER) {
+      if (viaIntegerSolving) {
         return buildInteger(name.c_str());
       }
       return buildReal(name.c_str());

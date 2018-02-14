@@ -156,6 +156,10 @@ public:
       std::vector<std::pair<std::string, std::vector<unsigned char> > > &res,
       std::vector<ref<Expr> > &equalities) = 0;
 
+  virtual bool getRealSymbolicSolution(
+      const ExecutionState &state,
+      std::vector<std::pair<std::string, double> > &res) = 0;
+
   virtual bool getMultipleSymbolicSolutions(
       unsigned max, const ExecutionState &state,
       std::vector<std::vector<

@@ -253,7 +253,10 @@ SolverImpl::SolverRunStatus Z3SolverImpl::handleSolverResponse(
         bool successfulEval =
             Z3_model_eval(builder->ctx, theModel, initial_read,
                           /*model_completion=*/Z3_TRUE, &arrayElementExpr);
-        assert(successfulEval && "Failed to evaluate model");
+
+        if (!successfulEval)
+          assert(!"Failed to evaluate model");
+
         Z3_inc_ref(builder->ctx, arrayElementExpr);
         assert(Z3_get_ast_kind(builder->ctx, arrayElementExpr) ==
                    Z3_NUMERAL_AST &&
@@ -262,7 +265,10 @@ SolverImpl::SolverRunStatus Z3SolverImpl::handleSolverResponse(
         int arrayElementValue = 0;
         bool successGet = Z3_get_numeral_int(builder->ctx, arrayElementExpr,
                                              &arrayElementValue);
-        assert(successGet && "failed to get value back");
+
+        if (!successGet)
+          assert(!"failed to get value back");
+
         assert(arrayElementValue >= 0 && arrayElementValue <= 255 &&
                "Integer from model is out of range");
         data.push_back(arrayElementValue);
