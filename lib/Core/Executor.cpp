@@ -4703,6 +4703,9 @@ bool Executor::getSymbolicSolution(
 bool Executor::getRealSymbolicSolution(
     const ExecutionState &state,
     std::vector<std::pair<std::string, double> > &res) {
+#ifndef ENABLE_Z3
+	return false;
+#else
   std::vector<std::vector<unsigned char> > values;
   std::vector<const Array *> objects;
 
@@ -4731,6 +4734,7 @@ bool Executor::getRealSymbolicSolution(
   }
 
   return true;
+#endif
 }
 
 bool Executor::getMultipleSymbolicSolutions(
