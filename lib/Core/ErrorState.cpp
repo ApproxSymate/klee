@@ -493,7 +493,8 @@ ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
 
     ref<Expr> addExpr;
     if (error0->getWidth() != error1->getWidth())
-      addExpr = (ZExtExpr::create(error0, error1->getWidth()), error1);
+      addExpr =
+          AddExpr::create(ZExtExpr::create(error0, error1->getWidth()), error1);
     else
       addExpr = AddExpr::create(error0, error1);
 
