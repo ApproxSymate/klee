@@ -1596,6 +1596,7 @@ static inline const llvm::fltSemantics * fpWidthToSemantics(unsigned width) {
 
 void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   Instruction *i = ki->inst;
+  // i->dump();
   switch (i->getOpcode()) {
     // Control flow
   case Instruction::Ret: {
@@ -2478,7 +2479,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> value = valueCell.value;
     ref<Expr> error = valueCell.error;
     ref<Expr> valueWithError = valueCell.valueWithError;
-    executeMemoryOperation(state, true, base, value, error, valueWithError, 0);
+    executeMemoryOperation(state, true, base, value, error, valueWithError, ki);
     break;
   }
 
@@ -4292,7 +4293,7 @@ void Executor::executeMemoryOperation(
           ObjectState *wos = state.addressSpace.getWriteable(mo, os);
           wos->write(offset, value);
           state.symbolicError->executeStore(address, value, error,
-                                            valueWithError);
+                                            valueWithError, target);
         }
       } else {
         ref<Expr> result = os->read(offset, type);
@@ -4343,7 +4344,7 @@ void Executor::executeMemoryOperation(
           ObjectState *wos = bound->addressSpace.getWriteable(mo, os);
           wos->write(mo->getOffsetExpr(address), value);
           state.symbolicError->executeStore(address, value, error,
-                                            valueWithError);
+                                            valueWithError, target);
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);

@@ -387,7 +387,6 @@ SolverImpl::SolverRunStatus Z3ErrorSolverImpl::handleSolverResponse(
       std::vector<unsigned char> data;
 
       data.reserve(8);
-      unsigned offset = 0;
 
       unsigned num_constants =
           Z3_model_get_num_consts(pathConditionBuilder->ctx, theModel);

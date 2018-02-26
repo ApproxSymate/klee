@@ -513,23 +513,6 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       delete f;
     }
 
-    // Output the symbolic error
-    std::string errors = state.symbolicError->getOutputString();
-    if (!errors.empty()) {
-      llvm::raw_ostream *f = openTestFile("precision_error", id);
-      *f << errors;
-      delete f;
-    }
-
-    double pathProbability = state.symbolicError->getPathProbability();
-    int branchCount = state.symbolicError->getBranchCount();
-    if (pathProbability > 0) {
-      llvm::raw_ostream *probFile = openTestFile("prob", id);
-      *probFile << "(pathLength, pathProbability), " << id << "\n"
-                << branchCount << ", " << pathProbability;
-      delete probFile;
-    }
-
     if (PrecisionError) {
       llvm::raw_ostream *f = openTestFile("kquery_precision_error", id);
       std::vector<ref<Expr> > &constraintsWithError =
@@ -544,6 +527,36 @@ void KleeHandler::processTestCase(const ExecutionState &state,
           *f << PrettyExpressionBuilder::construct(*it);
       }
       delete f;
+
+      // Output the symbolic error
+      std::string errors = state.symbolicError->getOutputString();
+      if (!errors.empty()) {
+        llvm::raw_ostream *f = openTestFile("precision_error", id);
+        *f << errors;
+        delete f;
+      }
+
+      double pathProbability = state.symbolicError->getPathProbability();
+      int branchCount = state.symbolicError->getBranchCount();
+      if (pathProbability > 0) {
+        llvm::raw_ostream *probFile = openTestFile("prob", id);
+        *probFile << "(pathLength, pathProbability), " << id << "\n"
+                  << branchCount << ", " << pathProbability;
+        delete probFile;
+      }
+
+      llvm::raw_ostream *expression_file = openTestFile("expressions", id);
+      std::map<std::string, ref<Expr> > expressions =
+          state.symbolicError->getErrorExpressions();
+      for (std::map<std::string, ref<Expr> >::const_iterator
+               itexp = expressions.begin(),
+               ieexp = expressions.end();
+           itexp != ieexp; ++itexp) {
+        *expression_file << itexp->first << "\n"
+                         << PrettyExpressionBuilder::construct(
+                                &(*itexp->second)) << "\n\n";
+      }
+      delete expression_file;
     }
 
     if (errorMessage || WriteKQueries) {
