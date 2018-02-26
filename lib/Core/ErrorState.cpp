@@ -670,7 +670,8 @@ ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
   ref<Expr> baseError = retrieveDeclaredInputError(base);
 
   if (baseError.isNull()) {
-    executeStoreSimple(address, error, nullExpr, 0);
+    KInstruction *ki = new KInstruction();
+    executeStoreSimple(address, error, nullExpr, ki);
     return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
   }
 
