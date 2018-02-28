@@ -1596,7 +1596,6 @@ static inline const llvm::fltSemantics * fpWidthToSemantics(unsigned width) {
 
 void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   Instruction *i = ki->inst;
-  // i->dump();
   switch (i->getOpcode()) {
     // Control flow
   case Instruction::Ret: {
