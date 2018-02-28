@@ -36,7 +36,7 @@ namespace klee {
 
 class EdgeProbability : public llvm::ModulePass {
 
-  std::map<llvm::BasicBlock *, std::pair<llvm::BasicBlock *, double> >
+  std::map<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>, double>
   edgeProbability;
 
 public:
