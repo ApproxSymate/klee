@@ -56,8 +56,9 @@ bool EdgeProbability::runOnModule(llvm::Module &M) {
         llvm::BranchProbability prob = BPI.getEdgeProbability(&(*bi), i);
         double floatProb =
             ((double)prob.getNumerator()) / ((double)prob.getDenominator());
-        edgeProbability[&(*bi)] =
-            std::pair<llvm::BasicBlock *, double>(succ, floatProb);
+        edgeProbability
+            [std::pair<llvm::BasicBlock *, llvm::BasicBlock *>(&(*bi), succ)] =
+                floatProb;
       }
     }
   }
@@ -72,11 +73,12 @@ void EdgeProbability::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 
 double EdgeProbability::getEdgeProbability(llvm::BasicBlock *dst,
                                            llvm::BasicBlock *src) const {
-  std::map<llvm::BasicBlock *,
-           std::pair<llvm::BasicBlock *, double> >::const_iterator it =
-      edgeProbability.find(src);
+  std::map<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>,
+           double>::const_iterator it =
+      edgeProbability.find(
+          std::pair<llvm::BasicBlock *, llvm::BasicBlock *>(src, dst));
   if (it != edgeProbability.end()) {
-    return it->second.second;
+    return it->second;
   }
   return 0;
 }
