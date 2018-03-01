@@ -588,8 +588,8 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
           errorExpressions.insert(
               std::pair<std::string, ref<Expr> >(stream.str(), error));
         }
-        }
       }
+    }
   }
 }
 
