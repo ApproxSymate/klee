@@ -79,7 +79,7 @@ public:
   void registerInputError(ref<Expr> error);
 
   void executeStoreSimple(ref<Expr> address, ref<Expr> error,
-                          ref<Expr> valueWithError, KInstruction *i);
+                          ref<Expr> valueWithError, llvm::Instruction *inst);
 
   void declareInputError(ref<Expr> address, ref<Expr> error);
 
@@ -103,7 +103,7 @@ public:
   ref<Expr> getScalingConstraint();
 
   // Getter for error expressions
-  std::map<std::string, ref<Expr> > getStateErrorExpressions();
+  std::map<std::string, ref<Expr> > &getStateErrorExpressions();
 
   /// dump - Print the object content to stderr
   void dump() const {

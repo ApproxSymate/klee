@@ -542,7 +542,8 @@ void ErrorState::registerInputError(ref<Expr> error) {
 }
 
 void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
-                                    ref<Expr> valueWithError, KInstruction *i) {
+                                    ref<Expr> valueWithError,
+                                    llvm::Instruction *inst) {
   if (error.isNull())
     return;
 
@@ -552,11 +553,11 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
     storedError[intAddress] =
         std::pair<ref<Expr>, ref<Expr> >(error, valueWithError);
 
-    if (i->inst) {
-      if (llvm::MDNode *n = i->inst->getMetadata("dbg")) {
+    if (inst) {
+      if (llvm::MDNode *n = inst->getMetadata("dbg")) {
         std::string str = "";
         llvm::raw_string_ostream stream(str);
-        i->inst->print(stream);
+        inst->print(stream);
         stream.str().erase(
             std::remove(stream.str().begin(), stream.str().end(), ','),
             stream.str().end());
@@ -572,7 +573,7 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
         llvm::StringRef file = loc.getFilename();
         llvm::StringRef dir = loc.getDirectory();
         stream << " Line " << line << " of " << dir.str() << "/" << file.str();
-        if (llvm::BasicBlock *bb = i->inst->getParent()) {
+        if (llvm::BasicBlock *bb = inst->getParent()) {
           if (llvm::Function *func = bb->getParent()) {
             stream << " (" << func->getName() << ")";
           }
@@ -669,8 +670,7 @@ ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
   ref<Expr> baseError = retrieveDeclaredInputError(base);
 
   if (baseError.isNull()) {
-    KInstruction *ki = new KInstruction();
-    executeStoreSimple(address, error, nullExpr, ki);
+    executeStoreSimple(address, error, nullExpr, 0);
     return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
   }
 
@@ -806,6 +806,6 @@ ref<Expr> ErrorState::getScalingConstraint() {
   return NeExpr::create(scalingVal, ConstantExpr::create(0, Expr::Int8));
 }
 
-std::map<std::string, ref<Expr> > ErrorState::getStateErrorExpressions() {
+std::map<std::string, ref<Expr> > &ErrorState::getStateErrorExpressions() {
   return errorExpressions;
 }

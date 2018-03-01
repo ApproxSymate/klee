@@ -546,7 +546,7 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       }
 
       llvm::raw_ostream *expression_file = openTestFile("expressions", id);
-      std::map<std::string, ref<Expr> > expressions =
+      std::map<std::string, ref<Expr> > &expressions =
           state.symbolicError->getErrorExpressions();
       for (std::map<std::string, ref<Expr> >::const_iterator
                itexp = expressions.begin(),

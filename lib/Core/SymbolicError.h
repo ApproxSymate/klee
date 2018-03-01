@@ -141,11 +141,11 @@ public:
   std::string &getOutputString() { return errorState->getOutputString(); }
 
   void executeStore(ref<Expr> address, ref<Expr> value, ref<Expr> error,
-                    ref<Expr> valueWithError, KInstruction *i);
+                    ref<Expr> valueWithError, llvm::Instruction *inst);
 
   void storeError(ref<Expr> address, ref<Expr> error, ref<Expr> errorWithValue,
-                  KInstruction *i) {
-    errorState->executeStoreSimple(address, error, errorWithValue, i);
+                  llvm::Instruction *inst) {
+    errorState->executeStoreSimple(address, error, errorWithValue, inst);
   }
 
   void declareInputError(ref<Expr> address, ref<Expr> error) {
@@ -178,7 +178,7 @@ public:
     return constraintsWithError;
   }
 
-  std::map<std::string, ref<Expr> > getErrorExpressions() {
+  std::map<std::string, ref<Expr> > &getErrorExpressions() {
     return errorState->getStateErrorExpressions();
   }
 
