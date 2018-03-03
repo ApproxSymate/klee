@@ -251,7 +251,8 @@ SymbolicError::~SymbolicError() {
 }
 
 void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
-                                 ref<Expr> error, ref<Expr> valueWithError) {
+                                 ref<Expr> error, ref<Expr> valueWithError,
+                                 llvm::Instruction *inst) {
     if (LoopBreaking && !writesStack.empty()) {
       // Record the error at each store at each iteration.
       if (llvm::isa<ConstantExpr>(address)) {
@@ -268,7 +269,7 @@ void SymbolicError::executeStore(ref<Expr> address, ref<Expr> value,
         assert(!"non-constant address");
       }
     }
-    storeError(address, error, valueWithError);
+    storeError(address, error, valueWithError, inst);
 }
 
 void SymbolicError::print(llvm::raw_ostream &os) const {

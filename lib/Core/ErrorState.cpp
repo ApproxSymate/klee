@@ -121,10 +121,6 @@ ErrorState::outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
   ConstraintManager ret;
 
   std::string errorVar;
-  llvm::raw_string_ostream errorVarStream(errorVar);
-  errorVarStream << "__error__" << reinterpret_cast<uint64_t>(error.get());
-  errorVarStream.flush();
-
   ref<Expr> errorVarExpr = ReadExpr::create(
       UpdateList(errorArrayCache->CreateArray(errorVar, Expr::Int8), 0),
       ConstantExpr::createPointer(0));
@@ -546,17 +542,54 @@ void ErrorState::registerInputError(ref<Expr> error) {
 }
 
 void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
-                                    ref<Expr> valueWithError) {
+                                    ref<Expr> valueWithError,
+                                    llvm::Instruction *inst) {
   if (error.isNull())
     return;
 
-  // At store instruction, we store new error by a multiply of the stored error
-  // with the loop trip count.
   if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
 	// We only store the error of concrete addresses
     uint64_t intAddress = cp->getZExtValue();
     storedError[intAddress] =
         std::pair<ref<Expr>, ref<Expr> >(error, valueWithError);
+
+    if (inst) {
+      if (llvm::MDNode *n = inst->getMetadata("dbg")) {
+        std::string str = "";
+        llvm::raw_string_ostream stream(str);
+        inst->print(stream);
+        stream.str().erase(
+            std::remove(stream.str().begin(), stream.str().end(), ','),
+            stream.str().end());
+        stream.str().erase(
+            std::remove(stream.str().begin(), stream.str().end(), '%'),
+            stream.str().end());
+        std::vector<std::string> tokens;
+        std::stringstream ss(stream.str());
+        while (ss >> stream.str())
+          tokens.push_back(stream.str());
+        llvm::DILocation loc(n);
+        unsigned line = loc.getLineNumber();
+        llvm::StringRef file = loc.getFilename();
+        llvm::StringRef dir = loc.getDirectory();
+        stream << " Line " << line << " of " << dir.str() << "/" << file.str();
+        if (llvm::BasicBlock *bb = inst->getParent()) {
+          if (llvm::Function *func = bb->getParent()) {
+            stream << " (" << func->getName() << ")";
+          }
+        }
+        // update/save error expression
+        stream << ", " << tokens[4] << ", " << intAddress;
+        std::map<std::string, ref<Expr> >::const_iterator it =
+            errorExpressions.find(stream.str());
+        if (it != errorExpressions.end()) {
+          errorExpressions[stream.str()] = error;
+        } else {
+          errorExpressions.insert(
+              std::pair<std::string, ref<Expr> >(stream.str(), error));
+        }
+      }
+    }
   }
 }
 
@@ -637,7 +670,7 @@ ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
   ref<Expr> baseError = retrieveDeclaredInputError(base);
 
   if (baseError.isNull()) {
-    executeStoreSimple(address, error, nullExpr);
+    executeStoreSimple(address, error, nullExpr, 0);
     return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
   }
 
@@ -771,4 +804,8 @@ ref<Expr> ErrorState::getScalingConstraint() {
   ref<Expr> scalingVal = ReadExpr::create(
       UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
   return NeExpr::create(scalingVal, ConstantExpr::create(0, Expr::Int8));
+}
+
+std::map<std::string, ref<Expr> > &ErrorState::getStateErrorExpressions() {
+  return errorExpressions;
 }

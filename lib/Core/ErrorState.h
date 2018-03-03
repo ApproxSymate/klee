@@ -14,6 +14,7 @@
 #include "klee/Expr.h"
 #include "klee/util/ArrayCache.h"
 #include "klee/Internal/Module/Cell.h"
+#include "klee/Internal/Module/KInstruction.h"
 
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Instructions.h"
@@ -42,6 +43,8 @@ private:
 
   std::map<uintptr_t, std::pair<ref<Expr>, ref<Expr> > > storedError;
 
+  std::map<std::string, ref<Expr> > errorExpressions;
+
   std::vector<ref<Expr> > inputErrorList;
 
 public:
@@ -52,6 +55,7 @@ public:
       : refCount(0), errorArrayCache(errorState.errorArrayCache) {
     declaredInputError = errorState.declaredInputError;
     storedError = errorState.storedError;
+    errorExpressions = errorState.errorExpressions;
     inputErrorList = errorState.inputErrorList;
     outputString = errorState.outputString;
   }
@@ -75,7 +79,7 @@ public:
   void registerInputError(ref<Expr> error);
 
   void executeStoreSimple(ref<Expr> address, ref<Expr> error,
-                          ref<Expr> valueWithError);
+                          ref<Expr> valueWithError, llvm::Instruction *inst);
 
   void declareInputError(ref<Expr> address, ref<Expr> error);
 
@@ -97,6 +101,9 @@ public:
 
   // Add to constraint lists the constraint scalingVar != 0
   ref<Expr> getScalingConstraint();
+
+  // Getter for error expressions
+  std::map<std::string, ref<Expr> > &getStateErrorExpressions();
 
   /// dump - Print the object content to stderr
   void dump() const {
