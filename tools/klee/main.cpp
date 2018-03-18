@@ -526,6 +526,16 @@ void KleeHandler::processTestCase(const ExecutionState &state,
         else
           *f << PrettyExpressionBuilder::construct(*it);
       }
+      *f << "\n";
+      for (std::vector<ref<Expr> >::const_iterator
+               it = state.constraints.begin(),
+               ie = state.constraints.end();
+           it != ie; ++it) {
+        if (it != state.constraints.begin())
+          *f << " && " << PrettyExpressionBuilder::construct(*it);
+        else
+          *f << PrettyExpressionBuilder::construct(*it);
+      }
       delete f;
 
       // Output the symbolic error

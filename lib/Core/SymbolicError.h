@@ -152,11 +152,11 @@ public:
     errorState->declareInputError(address, error);
   }
 
-  std::pair<ref<Expr>, ref<Expr> > executeLoad(llvm::Value *addressValue,
+  std::pair<ref<Expr>, ref<Expr> > executeLoad(llvm::Instruction *inst,
                                                ref<Expr> base,
                                                ref<Expr> address,
                                                ref<Expr> offset) {
-    return errorState->executeLoad(addressValue, base, address, offset);
+    return errorState->executeLoad(inst, base, address, offset);
   }
 
   void setKleeBoundErrorExpr(ref<Expr> error) { kleeBoundErrorExpr = error; }

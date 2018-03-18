@@ -91,7 +91,7 @@ public:
 
   /// \brief Retrieve the error expression from the stored error expressions
   /// map. This returns 0 when the address is not found.
-  std::pair<ref<Expr>, ref<Expr> > executeLoad(llvm::Value *value,
+  std::pair<ref<Expr>, ref<Expr> > executeLoad(llvm::Instruction *inst,
                                                ref<Expr> base,
                                                ref<Expr> address,
                                                ref<Expr> offset);
