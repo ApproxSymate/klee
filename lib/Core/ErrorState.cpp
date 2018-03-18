@@ -658,7 +658,7 @@ bool ErrorState::hasStoredError(ref<Expr> address) const {
 }
 
 std::pair<ref<Expr>, ref<Expr> >
-ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
+ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
                         ref<Expr> address, ref<Expr> offset) {
   ref<Expr> nullExpr;
   ref<Expr> error = ConstantExpr::create(0, Expr::Int8);
@@ -756,8 +756,48 @@ ErrorState::executeLoad(llvm::Value *addressValue, ref<Expr> base,
         error = baseError;
       }
   }
-
   registerInputError(error);
+
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    uint64_t intAddress = cp->getZExtValue();
+    if (inst) {
+      if (llvm::MDNode *n = inst->getMetadata("dbg")) {
+        std::string str = "";
+        llvm::raw_string_ostream stream(str);
+        inst->print(stream);
+        stream.str().erase(
+            std::remove(stream.str().begin(), stream.str().end(), ','),
+            stream.str().end());
+        stream.str().erase(
+            std::remove(stream.str().begin(), stream.str().end(), '%'),
+            stream.str().end());
+        std::vector<std::string> tokens;
+        std::stringstream ss(stream.str());
+        while (ss >> stream.str())
+          tokens.push_back(stream.str());
+        llvm::DILocation loc(n);
+        unsigned line = loc.getLineNumber();
+        llvm::StringRef file = loc.getFilename();
+        llvm::StringRef dir = loc.getDirectory();
+        stream << " Line " << line << " of " << dir.str() << "/" << file.str();
+        if (llvm::BasicBlock *bb = inst->getParent()) {
+          if (llvm::Function *func = bb->getParent()) {
+            stream << " (" << func->getName() << ")";
+          }
+        }
+        // update/save error expression
+        stream << ", " << tokens[4] << ", " << intAddress;
+        std::map<std::string, ref<Expr> >::const_iterator it =
+            errorExpressions.find(stream.str());
+        if (it != errorExpressions.end()) {
+          errorExpressions[stream.str()] = error;
+        } else {
+          errorExpressions.insert(
+              std::pair<std::string, ref<Expr> >(stream.str(), error));
+        }
+      }
+    }
+  }
   return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
 }
 
