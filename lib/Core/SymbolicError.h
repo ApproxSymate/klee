@@ -60,6 +60,7 @@ class SymbolicError {
   /// \brief Temporary storage to store the error expression for
   /// klee_bound_error call
   ref<Expr> kleeBoundErrorExpr;
+  ref<Expr> kleeBoundValueExpr;
 
   /// \brief Contains the path conditions with propagated error
   std::vector<ref<Expr> > constraintsWithError;
@@ -122,7 +123,8 @@ public:
   ConstraintManager outputErrorBound(llvm::Instruction *inst, double bound,
                                      std::string name,
                                      std::vector<ref<Expr> > &inputErrorList) {
-    return errorState->outputErrorBound(inst, kleeBoundErrorExpr, bound, name,
+    return errorState->outputErrorBound(inst, kleeBoundErrorExpr,
+                                        kleeBoundValueExpr, bound, name,
                                         inputErrorList);
   }
 
@@ -159,7 +161,10 @@ public:
     return errorState->executeLoad(inst, base, address, offset);
   }
 
-  void setKleeBoundErrorExpr(ref<Expr> error) { kleeBoundErrorExpr = error; }
+  void setKleeBoundErrorExpr(ref<Expr> error, ref<Expr> value) {
+    kleeBoundErrorExpr = error;
+    kleeBoundValueExpr = value;
+  }
 
   void recomputePathProbability(llvm::BasicBlock *dst, llvm::BasicBlock *src) {
     branchCount++;

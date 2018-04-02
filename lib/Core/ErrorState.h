@@ -66,7 +66,8 @@ public:
       std::vector<std::pair<int, double> > doublePrecision);
 
   ConstraintManager outputErrorBound(llvm::Instruction *inst, ref<Expr> error,
-                                     double bound, std::string name,
+                                     ref<Expr> value, double bound,
+                                     std::string name,
                                      std::vector<ref<Expr> > &_inputErrorList);
 
   std::pair<ref<Expr>, ref<Expr> > propagateError(Executor *executor,

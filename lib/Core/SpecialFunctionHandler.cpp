@@ -19,6 +19,8 @@
 #include "klee/Internal/Support/ErrorHandling.h"
 #include "klee/util/ExprUtil.h"
 
+#include "klee/util/PrettyExpressionBuilder.h"
+
 #include "Executor.h"
 #include "MemoryManager.h"
 

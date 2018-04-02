@@ -1865,7 +1865,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
     if (f && f->getName().str() == "klee_bound_error") {
       ref<Expr> error = eval(ki, 1, state).error;
-      state.symbolicError->setKleeBoundErrorExpr(error);
+      ref<Expr> value = eval(ki, 1, state).value;
+      state.symbolicError->setKleeBoundErrorExpr(error, value);
     }
 
     // Skip debug intrinsics, we can't evaluate their metadata arguments.
