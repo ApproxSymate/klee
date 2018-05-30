@@ -79,6 +79,8 @@ extern llvm::cl::opt<bool> Scaling;
 
 extern llvm::cl::opt<int> MultiKTest;
 
+extern llvm::cl::opt<bool> NoBranchCheck;
+
 #ifdef ENABLE_METASMT
 
 enum MetaSMTBackendType

@@ -133,6 +133,11 @@ MultiKTest("multi-ktest", llvm::cl::init(0), llvm::cl::value_desc("number"),
            llvm::cl::desc("Try to produce a specified number of ktest files of "
                           "different solutions"));
 
+llvm::cl::opt<bool>
+    NoBranchCheck("no-branch-check",
+                  llvm::cl::desc("Do not check branch feasibility"),
+                  llvm::cl::init(false));
+
 #ifdef ENABLE_METASMT
 
 #ifdef METASMT_DEFAULT_BACKEND_IS_BTOR
