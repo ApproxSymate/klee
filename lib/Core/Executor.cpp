@@ -785,7 +785,7 @@ void Executor::branch(ExecutionState &state,
 Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
                                    ref<Expr> error,
                                    ref<Expr> conditionWithError,
-                                   bool isInternal) {
+                                   bool isInternal, bool isBranching) {
   Solver::Validity res;
   std::map< ExecutionState*, std::vector<SeedInfo> >::iterator it = 
     seedMap.find(&current);
@@ -821,13 +821,17 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
   double timeout = coreSolverTimeout;
   if (isSeeding)
     timeout *= it->second.size();
-  solver->setTimeout(timeout);
-  bool success = solver->evaluate(current, condition, res);
-  solver->setTimeout(0);
-  if (!success) {
-    current.pc = current.prevPC;
-    terminateStateEarly(current, "Query timed out (fork).");
-    return StatePair(0, 0);
+  if (isBranching && NoBranchCheck) {
+    res = Solver::Unknown;
+  } else {
+    solver->setTimeout(timeout);
+    bool success = solver->evaluate(current, condition, res);
+    solver->setTimeout(0);
+    if (!success) {
+      current.pc = current.prevPC;
+      terminateStateEarly(current, "Query timed out (fork).");
+      return StatePair(0, 0);
+    }
   }
 
   if (!isSeeding) {
@@ -1705,7 +1709,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       ref<Expr> error = eval(ki, 0, state).error;
       ref<Expr> condWithError = eval(ki, 0, state).valueWithError;
       Executor::StatePair branches =
-          fork(state, cond, error, condWithError, false);
+          fork(state, cond, error, condWithError, false, true);
 
       // NOTE: There is a hidden dependency here, markBranchVisited
       // requires that we still be in the context of the branch
@@ -1944,7 +1948,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
         (void) success;
         StatePair res =
             fork(*free, EqExpr::create(v, value),
-                 ConstantExpr::create(1, Expr::Int8), nullExpr, true);
+                 ConstantExpr::create(1, Expr::Int8), nullExpr, true, false);
         if (res.first) {
           uint64_t addr = value->getZExtValue();
           if (legalFunctions.count(addr)) {
@@ -4110,7 +4114,7 @@ void Executor::executeAlloc(ExecutionState &state,
     ref<Expr> nullExpr;
     StatePair fixedSize =
         fork(state, EqExpr::create(example, size),
-             ConstantExpr::create(0, Expr::Int8), nullExpr, true);
+             ConstantExpr::create(0, Expr::Int8), nullExpr, true, false);
 
     if (fixedSize.second) { 
       // Check for exactly two values
@@ -4134,7 +4138,7 @@ void Executor::executeAlloc(ExecutionState &state,
         StatePair hugeSize =
             fork(*fixedSize.second,
                  UltExpr::create(ConstantExpr::alloc(1 << 31, W), size),
-                 ConstantExpr::create(0, Expr::Int8), nullExpr, true);
+                 ConstantExpr::create(0, Expr::Int8), nullExpr, true, false);
         if (hugeSize.first) {
           ref<Expr> nullExpr;
           klee_message("NOTE: found huge malloc, returning 0");
@@ -4169,7 +4173,7 @@ void Executor::executeFree(ExecutionState &state,
   ref<Expr> nullExpr;
   StatePair zeroPointer =
       fork(state, Expr::createIsZero(address),
-           ConstantExpr::create(0, Expr::Int8), nullExpr, true);
+           ConstantExpr::create(0, Expr::Int8), nullExpr, true, false);
   if (zeroPointer.first) {
     ref<Expr> nullExpr;
     if (target)
@@ -4218,7 +4222,7 @@ void Executor::resolveExact(ExecutionState &state,
 
     StatePair branches =
         fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), nullExpr,
-             true);
+             true, false);
 
     if (branches.first)
       results.push_back(std::make_pair(*it, branches.first));
@@ -4328,7 +4332,7 @@ void Executor::executeMemoryOperation(
 
     StatePair branches =
         fork(*unbound, inBounds, ConstantExpr::create(0, Expr::Int8), nullExpr,
-             true);
+             true, false);
     ExecutionState *bound = branches.first;
 
     // bound can be 0 on failure or overlapped 

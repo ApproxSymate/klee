@@ -708,16 +708,16 @@ void SpecialFunctionHandler::handleRealloc(ExecutionState &state,
 
   Executor::StatePair zeroSize =
       executor.fork(state, Expr::createIsZero(size),
-                    ConstantExpr::create(0, Expr::Int8), nullExpr, true);
+                    ConstantExpr::create(0, Expr::Int8), nullExpr, true, false);
 
   if (zeroSize.first) { // size == 0
     executor.executeFree(*zeroSize.first, address, target);   
   }
   if (zeroSize.second) { // size != 0
     ref<Expr> nullExpr;
-    Executor::StatePair zeroPointer =
-        executor.fork(*zeroSize.second, Expr::createIsZero(address),
-                      ConstantExpr::create(0, Expr::Int8), nullExpr, true);
+    Executor::StatePair zeroPointer = executor.fork(
+        *zeroSize.second, Expr::createIsZero(address),
+        ConstantExpr::create(0, Expr::Int8), nullExpr, true, false);
 
     if (zeroPointer.first) { // address == 0
       executor.executeAlloc(*zeroPointer.first, size, false, target);
