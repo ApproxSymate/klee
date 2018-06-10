@@ -1026,7 +1026,7 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
 
 void Executor::addConstraint(ExecutionState &state, ref<Expr> condition) {
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(condition)) {
-    if (!CE->isTrue())
+    if (!NoBranchCheck && !CE->isTrue())
       llvm::report_fatal_error("attempt to add invalid constraint");
     return;
   }
