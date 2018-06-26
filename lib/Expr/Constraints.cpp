@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "klee/Constraints.h"
+#include "klee/CommandLine.h"
 
 #include "klee/util/ExprPPrinter.h"
 #include "klee/util/ExprVisitor.h"
@@ -130,6 +131,8 @@ void ConstraintManager::addConstraintInternal(ref<Expr> e) {
 
   switch (e->getKind()) {
   case Expr::Constant:
+    if (NoBranchCheck)
+      break;
     assert(cast<ConstantExpr>(e)->isTrue() && 
            "attempt to add invalid (false) constraint");
     break;
