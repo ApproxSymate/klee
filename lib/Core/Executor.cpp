@@ -2110,6 +2110,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
     ref<Expr> left = lCell.value;
     ref<Expr> right = rCell.value;
+
+    if (NoBranchCheck && right->isZero())
+      return terminateStateOnExecError(state,
+                                       "Division by zero in SDiv execution");
+
     ref<Expr> result = SDivExpr::create(left, right);
 
     if (PrecisionError && Scaling) {
@@ -2121,6 +2126,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
                                ConstantExpr::create(0, array->getDomain()));
           ref<Expr> mulExpr = MulExpr::create(
               left, SExtExpr::create(scalingVal, left->getWidth()));
+
+          if (NoBranchCheck && right->isZero())
+            return terminateStateOnExecError(
+                state, "Division by zero in SDiv execution");
+
           result = SDivExpr::create(mulExpr, right);
         }
       }
@@ -2739,6 +2749,10 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
         right = ZExtExpr::create(right, left->getWidth());
       else if (left->getWidth() < right->getWidth())
         left = ZExtExpr::create(left, right->getWidth());
+
+      if (NoBranchCheck && right->isZero())
+        return terminateStateOnExecError(state,
+                                         "Division by zero in FDiv execution");
 
       ref<Expr> result = SDivExpr::create(left, right);
 
