@@ -791,9 +791,6 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
             errorExpressions.find(stream.str());
         if (it != errorExpressions.end()) {
           errorExpressions[stream.str()] = error;
-        } else {
-          errorExpressions.insert(
-              std::pair<std::string, ref<Expr> >(stream.str(), error));
         }
       }
     }
