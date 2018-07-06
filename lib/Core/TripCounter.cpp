@@ -11,6 +11,8 @@
 
 #define DEBUG_TYPE "trip-counter"
 
+#include "klee/CommandLine.h"
+
 #include "llvm/DebugInfo.h"
 #include "llvm/Pass.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -54,6 +56,18 @@ void TripCounter::analyzeSubLoops(llvm::ScalarEvolution &se,
         header->getFirstNonPHIOrDbgOrLifetime();
     llvm::Instruction *exitFirstInst =
         l->getExitBlock()->getFirstNonPHIOrDbgOrLifetime();
+
+    if (DebugPrecision) {
+      llvm::errs() << "Loop trip count [";
+      llvm::errs() << headerFirstInst->getParent()->getParent()->getName().str()
+                   << ": ";
+      if (llvm::MDNode *n = headerFirstInst->getMetadata("dbg")) {
+        llvm::DILocation loc(n);
+        llvm::errs() << "Line " << loc.getLineNumber();
+      }
+      llvm::errs() << "]: " << scevConstant->getValue()->getSExtValue() << "\n";
+    }
+
     tripCount[headerFirstInst] = scevConstant->getValue()->getSExtValue();
     exitBlock[headerFirstInst] = l->getExitBlock();
     for (llvm::Loop::block_iterator it = l->block_begin(), ie = l->block_end();
