@@ -109,6 +109,9 @@ public:
   std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
   getStateErrorExpressions();
 
+  // Getter for math call functions and arguments
+  std::map<std::string, std::vector<Cell> > &getMathExpressions();
+
   /// dump - Print the object content to stderr
   void dump() const {
     print(llvm::errs());

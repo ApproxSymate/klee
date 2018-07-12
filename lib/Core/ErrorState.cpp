@@ -862,6 +862,10 @@ ErrorState::getStateErrorExpressions() {
   return errorExpressions;
 }
 
+std::map<std::string, std::vector<Cell> > &ErrorState::getMathExpressions() {
+  return mathCallArgs;
+}
+
 ref<Expr> ErrorState::createNewMathErrorVar(ref<Expr> mathVar,
                                             std::string mathVarName) {
   const std::string errorVarName = "err_" + mathVarName;

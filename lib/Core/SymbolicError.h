@@ -183,6 +183,10 @@ public:
     return errorState->getStateErrorExpressions();
   }
 
+  std::map<std::string, std::vector<Cell> > &getMathCalls() {
+    return errorState->getMathExpressions();
+  }
+
   void addErrorConstraint(ref<Expr> error) {
     constraintsWithError.push_back(error);
   }
