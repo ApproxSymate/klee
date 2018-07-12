@@ -3921,6 +3921,12 @@ static std::set<std::string> okExternals(okExternalsList,
                                          okExternalsList + 
                                          (sizeof(okExternalsList)/sizeof(okExternalsList[0])));
 
+static const char *mathCallNames[] = { "sin", "sqrt", "abs", "fabs" };
+
+static std::set<std::string> externalMathCallsList(
+    mathCallNames,
+    mathCallNames + (sizeof(mathCallNames) / sizeof(mathCallNames[0])));
+
 void Executor::callExternalFunction(ExecutionState &state,
                                     KInstruction *target,
                                     Function *function,
@@ -3928,7 +3934,24 @@ void Executor::callExternalFunction(ExecutionState &state,
   // check if specialFunctionHandler wants it
   if (specialFunctionHandler->handle(state, function, target, arguments))
     return;
-  
+
+  if (MathCalls && externalMathCallsList.count(function->getName())) {
+    // create new symbolic variable
+    std::string varName = state.getNewMathVarName(function->getName().str());
+
+    const Array *array = arrayCache.CreateArray(varName, Expr::Int8);
+    ref<Expr> newMathVar = ReadExpr::create(
+        UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
+
+    ref<Expr> newMathErrorVar =
+        state.getNewSymbolicMathErrorVariable(newMathVar, varName);
+
+    ref<Expr> nullExpr;
+    bindLocal(target, state, newMathVar,
+              std::pair<ref<Expr>, ref<Expr> >(newMathErrorVar, nullExpr));
+    return;
+  }
+
   if (NoExternals && !okExternals.count(function->getName())) {
     klee_warning("Calling not-OK external function : %s\n",
                function->getName().str().c_str());

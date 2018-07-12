@@ -861,3 +861,12 @@ std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
 ErrorState::getStateErrorExpressions() {
   return errorExpressions;
 }
+
+ref<Expr> ErrorState::createNewMathErrorVar(ref<Expr> mathVar,
+                                            std::string mathVarName) {
+  const std::string errorVarName = "err_" + mathVarName;
+  const Array *array = errorArrayCache->CreateArray(errorVarName, Expr::Int8);
+  ref<Expr> mathErrorVar = ReadExpr::create(
+      UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
+  return mathErrorVar;
+}

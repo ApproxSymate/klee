@@ -111,6 +111,8 @@ public:
     print(llvm::errs());
     llvm::errs() << "\n";
   }
+
+  ref<Expr> createNewMathErrorVar(ref<Expr> mathVar, std::string mathVarName);
 };
 }
 

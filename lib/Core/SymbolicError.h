@@ -201,6 +201,11 @@ public:
     addErrorConstraint(scalingConstraint);
     return scalingConstraint;
   }
+
+  ref<Expr> getSymbolicMathErrorVar(ref<Expr> mathVar,
+                                    std::string mathVarName) {
+    return errorState->createNewMathErrorVar(mathVar, mathVarName);
+  }
 };
 }
 

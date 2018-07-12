@@ -145,6 +145,9 @@ public:
   //@brief Symbolic error information
   SymbolicError *symbolicError;
 
+  //@breif Used to generate return variable names for math function calls
+  int mathVarCount;
+
   std::string getFnAlias(std::string fn);
   void addFnAlias(std::string old_fn, std::string new_fn);
   void removeFnAlias(std::string fn);
@@ -173,6 +176,10 @@ public:
 
   bool merge(const ExecutionState &b);
   void dumpStack(llvm::raw_ostream &out) const;
+
+  std::string getNewMathVarName(std::string mathFunctionName);
+  ref<Expr> getNewSymbolicMathErrorVariable(ref<Expr> mathVar,
+                                            std::string mathVarName);
 };
 }
 
