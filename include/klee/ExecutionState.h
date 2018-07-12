@@ -178,8 +178,6 @@ public:
   void dumpStack(llvm::raw_ostream &out) const;
 
   std::string getNewMathVarName(std::string mathFunctionName);
-  ref<Expr> getNewSymbolicMathErrorVariable(ref<Expr> mathVar,
-                                            std::string mathVarName);
 };
 }
 

@@ -242,10 +242,8 @@ private:
 			    llvm::BasicBlock *src,
 			    ExecutionState &state);
 
-  void callExternalFunction(ExecutionState &state,
-                            KInstruction *target,
-                            llvm::Function *function,
-                            std::vector< ref<Expr> > &arguments);
+  void callExternalFunction(ExecutionState &state, KInstruction *target,
+                            llvm::Function *function, std::vector<Cell> &args);
 
   ObjectState *bindObjectInState(ExecutionState &state, const MemoryObject *mo,
                                  bool isLocal, const Array *array = 0);

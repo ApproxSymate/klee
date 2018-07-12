@@ -870,3 +870,9 @@ ref<Expr> ErrorState::createNewMathErrorVar(ref<Expr> mathVar,
       UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
   return mathErrorVar;
 }
+
+void ErrorState::storeMathCallArgs(std::string varName,
+                                   std::vector<Cell> &arguments) {
+  // save the function call args
+  mathCallArgs[varName] = arguments;
+}

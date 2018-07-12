@@ -392,11 +392,7 @@ void ExecutionState::dumpStack(llvm::raw_ostream &out) const {
 
 std::string ExecutionState::getNewMathVarName(std::string mathFunctionName) {
   mathVarCount++;
-  return mathFunctionName + "_";
-}
-
-ref<Expr>
-ExecutionState::getNewSymbolicMathErrorVariable(ref<Expr> mathVar,
-                                                std::string mathVarName) {
-  return symbolicError->getSymbolicMathErrorVar(mathVar, mathVarName);
+  std::ostringstream str;
+  str << mathVarCount;
+  return mathFunctionName + "_" + str.str();
 }

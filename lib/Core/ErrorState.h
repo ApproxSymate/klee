@@ -47,6 +47,8 @@ private:
 
   std::vector<ref<Expr> > inputErrorList;
 
+  std::map<std::string, std::vector<Cell> > mathCallArgs;
+
 public:
   ErrorState(ArrayCache *arrayCache)
       : refCount(0), errorArrayCache(arrayCache) {}
@@ -58,6 +60,7 @@ public:
     errorExpressions = errorState.errorExpressions;
     inputErrorList = errorState.inputErrorList;
     outputString = errorState.outputString;
+    mathCallArgs = errorState.mathCallArgs;
   }
 
   ~ErrorState();
@@ -113,6 +116,8 @@ public:
   }
 
   ref<Expr> createNewMathErrorVar(ref<Expr> mathVar, std::string mathVarName);
+
+  void storeMathCallArgs(std::string varName, std::vector<Cell> &arguments);
 };
 }
 
