@@ -1329,23 +1329,6 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
   if (f && f->isDeclaration()) {
     switch(f->getIntrinsicID()) {
     case Intrinsic::not_intrinsic: {
-      // Here we replace cell vector with expression vector. We assume they are
-      // short.
-      /*std::vector<ref<Expr> > exprArguments;
-      for (std::vector<Cell>::iterator it = arguments.begin(),
-                                       ie = arguments.end();
-           it != ie; ++it) {
-        exprArguments.push_back(it->value);
-      }
-
-      //
-      std::vector<ref<Expr> > exprArgumentsError;
-                        for (std::vector<Cell>::iterator it = arguments.begin(),
-      ie =
-                                        arguments.end(); it != ie; ++it) {
-                                exprArgumentsError.push_back(it->error);
-                        }*/
-
       // state may be destroyed by this call, cannot touch
       callExternalFunction(state, ki, f, arguments);
       break;
@@ -3950,7 +3933,8 @@ void Executor::callExternalFunction(ExecutionState &state, KInstruction *target,
 
   if (MathCalls && externalMathCallsList.count(function->getName())) {
     // create new symbolic variable
-    std::string varName = state.getNewMathVarName(function->getName().str());
+    std::string varName =
+        state.symbolicError->getNewMathVarName(function->getName().str());
 
     const Array *array = arrayCache.CreateArray(varName, Expr::Int8);
     ref<Expr> newMathVar = ReadExpr::create(

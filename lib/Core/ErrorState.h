@@ -49,9 +49,14 @@ private:
 
   std::map<std::string, std::vector<Cell> > mathCallArgs;
 
+  //@breif Used to generate return variable names for math function calls
+  int mathVarCount;
+
 public:
   ErrorState(ArrayCache *arrayCache)
-      : refCount(0), errorArrayCache(arrayCache) {}
+      : refCount(0), errorArrayCache(arrayCache) {
+    mathVarCount = 0;
+  }
 
   ErrorState(ErrorState &errorState)
       : refCount(0), errorArrayCache(errorState.errorArrayCache) {
@@ -61,6 +66,7 @@ public:
     inputErrorList = errorState.inputErrorList;
     outputString = errorState.outputString;
     mathCallArgs = errorState.mathCallArgs;
+    mathVarCount = errorState.mathVarCount;
   }
 
   ~ErrorState();
@@ -121,6 +127,8 @@ public:
   ref<Expr> createNewMathErrorVar(ref<Expr> mathVar, std::string mathVarName);
 
   void storeMathCallArgs(std::string varName, std::vector<Cell> &arguments);
+
+  std::string createNewMathVarName(std::string mathFunctionName);
 };
 }
 

@@ -77,12 +77,10 @@ ExecutionState::ExecutionState(KFunction *kf, ArrayCache *arrayCache)
     ref<Expr> scalingConstraint = symbolicError->getScalingConstraint();
     addConstraint(scalingConstraint);
   }
-  mathVarCount = 0;
 }
 
 ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
     : constraints(assumptions), queryCost(0.), ptreeNode(0), symbolicError(0) {
-  mathVarCount = 0;
 }
 
 ExecutionState::~ExecutionState() {
@@ -129,8 +127,6 @@ ExecutionState::ExecutionState(const ExecutionState& state):
 {
   for (unsigned int i=0; i<symbolics.size(); i++)
     symbolics[i].first->refCount++;
-
-  mathVarCount = state.mathVarCount;
 }
 
 ExecutionState *ExecutionState::branch() {
@@ -388,11 +384,4 @@ void ExecutionState::dumpStack(llvm::raw_ostream &out) const {
     out << "\n";
     target = sf.caller;
   }
-}
-
-std::string ExecutionState::getNewMathVarName(std::string mathFunctionName) {
-  mathVarCount++;
-  std::ostringstream str;
-  str << mathVarCount;
-  return mathFunctionName + "_" + str.str();
 }

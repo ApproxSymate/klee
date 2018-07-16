@@ -880,3 +880,10 @@ void ErrorState::storeMathCallArgs(std::string varName,
   // save the function call args
   mathCallArgs[varName] = arguments;
 }
+
+std::string ErrorState::createNewMathVarName(std::string mathFunctionName) {
+  mathVarCount++;
+  std::ostringstream str;
+  str << mathVarCount;
+  return mathFunctionName + "_" + str.str();
+}

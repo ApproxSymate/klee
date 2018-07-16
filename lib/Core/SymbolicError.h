@@ -214,6 +214,10 @@ public:
   void saveMathCallArgs(std::string varName, std::vector<Cell> &arguments) {
     errorState->storeMathCallArgs(varName, arguments);
   }
+
+  std::string getNewMathVarName(std::string mathFunctionName) {
+    return errorState->createNewMathVarName(mathFunctionName);
+  }
 };
 }
 
