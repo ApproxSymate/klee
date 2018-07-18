@@ -580,13 +580,17 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
         }
         // update/save error expression
         stream << ", " << tokens[4] << ", " << intAddress;
-        std::map<std::string, ref<Expr> >::const_iterator it =
-            errorExpressions.find(stream.str());
+        std::map<uint64_t, std::pair<std::string, ref<Expr> > >::const_iterator
+        it = errorExpressions.find(intAddress);
+
         if (it != errorExpressions.end()) {
-          errorExpressions[stream.str()] = error;
+          errorExpressions[intAddress] =
+              std::pair<std::string, ref<Expr> >(stream.str(), error);
         } else {
           errorExpressions.insert(
-              std::pair<std::string, ref<Expr> >(stream.str(), error));
+              std::pair<uint64_t, std::pair<std::string, ref<Expr> > >(
+                  intAddress,
+                  std::pair<std::string, ref<Expr> >(stream.str(), error)));
         }
       }
     }
@@ -787,10 +791,11 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
         }
         // update/save error expression
         stream << ", " << tokens[4] << ", " << intAddress;
-        std::map<std::string, ref<Expr> >::const_iterator it =
-            errorExpressions.find(stream.str());
+        std::map<uint64_t, std::pair<std::string, ref<Expr> > >::const_iterator
+        it = errorExpressions.find(intAddress);
         if (it != errorExpressions.end()) {
-          errorExpressions[stream.str()] = error;
+          errorExpressions[intAddress] =
+              std::pair<std::string, ref<Expr> >(stream.str(), error);
         }
       }
     }
@@ -843,6 +848,7 @@ ref<Expr> ErrorState::getScalingConstraint() {
   return NeExpr::create(scalingVal, ConstantExpr::create(0, Expr::Int8));
 }
 
-std::map<std::string, ref<Expr> > &ErrorState::getStateErrorExpressions() {
+std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
+ErrorState::getStateErrorExpressions() {
   return errorExpressions;
 }
