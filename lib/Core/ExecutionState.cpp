@@ -80,7 +80,8 @@ ExecutionState::ExecutionState(KFunction *kf, ArrayCache *arrayCache)
 }
 
 ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
-    : constraints(assumptions), queryCost(0.), ptreeNode(0), symbolicError(0) {}
+    : constraints(assumptions), queryCost(0.), ptreeNode(0), symbolicError(0) {
+}
 
 ExecutionState::~ExecutionState() {
   for (unsigned int i=0; i<symbolics.size(); i++)

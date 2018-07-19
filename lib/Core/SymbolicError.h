@@ -183,6 +183,10 @@ public:
     return errorState->getStateErrorExpressions();
   }
 
+  std::map<std::string, std::vector<Cell> > &getMathCalls() {
+    return errorState->getMathExpressions();
+  }
+
   void addErrorConstraint(ref<Expr> error) {
     constraintsWithError.push_back(error);
   }
@@ -200,6 +204,19 @@ public:
     ref<Expr> scalingConstraint = errorState->getScalingConstraint();
     addErrorConstraint(scalingConstraint);
     return scalingConstraint;
+  }
+
+  ref<Expr> getSymbolicMathErrorVar(ref<Expr> mathVar,
+                                    std::string mathVarName) {
+    return errorState->createNewMathErrorVar(mathVar, mathVarName);
+  }
+
+  void saveMathCallArgs(std::string varName, std::vector<Cell> &arguments) {
+    errorState->storeMathCallArgs(varName, arguments);
+  }
+
+  std::string getNewMathVarName(std::string mathFunctionName) {
+    return errorState->createNewMathVarName(mathFunctionName);
   }
 };
 }

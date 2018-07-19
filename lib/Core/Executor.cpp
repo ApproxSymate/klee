@@ -1329,16 +1329,8 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
   if (f && f->isDeclaration()) {
     switch(f->getIntrinsicID()) {
     case Intrinsic::not_intrinsic: {
-      // Here we replace cell vector with expression vector. We assume they are
-      // short.
-      std::vector<ref<Expr> > exprArguments;
-      for (std::vector<Cell>::iterator it = arguments.begin(),
-                                       ie = arguments.end();
-           it != ie; ++it) {
-        exprArguments.push_back(it->value);
-      }
       // state may be destroyed by this call, cannot touch
-      callExternalFunction(state, ki, f, exprArguments);
+      callExternalFunction(state, ki, f, arguments);
       break;
     }
       // va_arg is handled by caller and intrinsic lowering, see comment for
@@ -1929,7 +1921,6 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
           i++;
         }
       }
-
       executeCall(state, ki, f, arguments);
     } else {
       ref<Expr> v = eval(ki, 0, state).value;
@@ -3921,14 +3912,47 @@ static std::set<std::string> okExternals(okExternalsList,
                                          okExternalsList + 
                                          (sizeof(okExternalsList)/sizeof(okExternalsList[0])));
 
-void Executor::callExternalFunction(ExecutionState &state,
-                                    KInstruction *target,
+static const char *mathCallNames[] = { "sin", "cos", "sqrt", "abs", "fabs" };
+
+static std::set<std::string> externalMathCallsList(
+    mathCallNames,
+    mathCallNames + (sizeof(mathCallNames) / sizeof(mathCallNames[0])));
+
+void Executor::callExternalFunction(ExecutionState &state, KInstruction *target,
                                     Function *function,
-                                    std::vector< ref<Expr> > &arguments) {
+                                    std::vector<Cell> &callArgs) {
+
+  std::vector<ref<Expr> > arguments;
+  for (std::vector<Cell>::iterator it = callArgs.begin(), ie = callArgs.end();
+       it != ie; ++it) {
+    arguments.push_back(it->value);
+  }
   // check if specialFunctionHandler wants it
   if (specialFunctionHandler->handle(state, function, target, arguments))
     return;
-  
+
+  if (MathCalls && externalMathCallsList.count(function->getName())) {
+    // create new symbolic variable
+    std::string varName =
+        state.symbolicError->getNewMathVarName(function->getName().str());
+
+    const Array *array = arrayCache.CreateArray(varName, Expr::Int8);
+    ref<Expr> newMathVar = ReadExpr::create(
+        UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
+
+    ref<Expr> newMathErrorVar =
+        state.symbolicError->getSymbolicMathErrorVar(newMathVar, varName);
+
+    ref<Expr> nullExpr;
+    bindLocal(target, state, newMathVar,
+              std::pair<ref<Expr>, ref<Expr> >(newMathErrorVar, nullExpr));
+
+    // save funtion arguments
+    state.symbolicError->saveMathCallArgs(varName, callArgs);
+
+    return;
+  }
+
   if (NoExternals && !okExternals.count(function->getName())) {
     klee_warning("Calling not-OK external function : %s\n",
                function->getName().str().c_str());

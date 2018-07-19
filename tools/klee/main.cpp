@@ -568,6 +568,27 @@ void KleeHandler::processTestCase(const ExecutionState &state,
                                &(*itexp->second.second)) << "\n\n";
       }
       delete expressionFile;
+
+      if (MathCalls) {
+        llvm::raw_ostream *mathExpFile = openTestFile("mathf", id);
+        std::map<std::string, std::vector<Cell> > &mathCalls =
+            state.symbolicError->getMathCalls();
+        for (std::map<std::string, std::vector<Cell> >::const_iterator
+                 itmath = mathCalls.begin(),
+                 iemath = mathCalls.end();
+             itmath != iemath; ++itmath) {
+          *mathExpFile << itmath->first << "\n";
+          std::vector<Cell> args = itmath->second;
+          for (std::vector<Cell>::iterator itargs = args.begin();
+               itargs != args.end(); ++itargs) {
+            *mathExpFile << PrettyExpressionBuilder::construct(
+                                &(*itargs->value)) << ", "
+                         << PrettyExpressionBuilder::construct(
+                                &(*itargs->error)) << "\n\n";
+          }
+        }
+        delete mathExpFile;
+      }
     }
 
     if (errorMessage || WriteKQueries) {

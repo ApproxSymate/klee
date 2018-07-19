@@ -128,6 +128,10 @@ llvm::cl::opt<bool> Scaling(
         "Scale numerator of divisions to prevent rounding the result to zero"),
     llvm::cl::init(false));
 
+llvm::cl::opt<bool> MathCalls("math-calls",
+                              llvm::cl::desc("Handle math function calls"),
+                              llvm::cl::init(false));
+
 llvm::cl::opt<int>
 MultiKTest("multi-ktest", llvm::cl::init(0), llvm::cl::value_desc("number"),
            llvm::cl::desc("Try to produce a specified number of ktest files of "

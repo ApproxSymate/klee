@@ -47,9 +47,14 @@ private:
 
   std::vector<ref<Expr> > inputErrorList;
 
+  std::map<std::string, std::vector<Cell> > mathCallArgs;
+
+  //@breif Used to generate return variable names for math function calls
+  int mathVarCount;
+
 public:
   ErrorState(ArrayCache *arrayCache)
-      : refCount(0), errorArrayCache(arrayCache) {}
+      : refCount(0), errorArrayCache(arrayCache), mathVarCount(0) {}
 
   ErrorState(ErrorState &errorState)
       : refCount(0), errorArrayCache(errorState.errorArrayCache) {
@@ -58,6 +63,8 @@ public:
     errorExpressions = errorState.errorExpressions;
     inputErrorList = errorState.inputErrorList;
     outputString = errorState.outputString;
+    mathCallArgs = errorState.mathCallArgs;
+    mathVarCount = errorState.mathVarCount;
   }
 
   ~ErrorState();
@@ -106,11 +113,20 @@ public:
   std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
   getStateErrorExpressions();
 
+  // Getter for math call functions and arguments
+  std::map<std::string, std::vector<Cell> > &getMathExpressions();
+
   /// dump - Print the object content to stderr
   void dump() const {
     print(llvm::errs());
     llvm::errs() << "\n";
   }
+
+  ref<Expr> createNewMathErrorVar(ref<Expr> mathVar, std::string mathVarName);
+
+  void storeMathCallArgs(std::string varName, std::vector<Cell> &arguments);
+
+  std::string createNewMathVarName(std::string mathFunctionName);
 };
 }
 

@@ -861,3 +861,29 @@ std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
 ErrorState::getStateErrorExpressions() {
   return errorExpressions;
 }
+
+std::map<std::string, std::vector<Cell> > &ErrorState::getMathExpressions() {
+  return mathCallArgs;
+}
+
+ref<Expr> ErrorState::createNewMathErrorVar(ref<Expr> mathVar,
+                                            std::string mathVarName) {
+  const std::string errorVarName = "err_" + mathVarName;
+  const Array *array = errorArrayCache->CreateArray(errorVarName, Expr::Int8);
+  ref<Expr> mathErrorVar = ReadExpr::create(
+      UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
+  return mathErrorVar;
+}
+
+void ErrorState::storeMathCallArgs(std::string varName,
+                                   std::vector<Cell> &arguments) {
+  // save the function call args
+  mathCallArgs[varName] = arguments;
+}
+
+std::string ErrorState::createNewMathVarName(std::string mathFunctionName) {
+  mathVarCount++;
+  std::ostringstream str;
+  str << mathVarCount;
+  return mathFunctionName + "_" + str.str();
+}

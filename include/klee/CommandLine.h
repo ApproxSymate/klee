@@ -77,6 +77,8 @@ extern llvm::cl::opt<bool> LoopBreaking;
 
 extern llvm::cl::opt<bool> Scaling;
 
+extern llvm::cl::opt<bool> MathCalls;
+
 extern llvm::cl::opt<int> MultiKTest;
 
 extern llvm::cl::opt<bool> NoBranchCheck;
