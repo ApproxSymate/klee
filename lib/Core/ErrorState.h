@@ -54,9 +54,7 @@ private:
 
 public:
   ErrorState(ArrayCache *arrayCache)
-      : refCount(0), errorArrayCache(arrayCache) {
-    mathVarCount = 0;
-  }
+      : refCount(0), errorArrayCache(arrayCache), mathVarCount(0) {}
 
   ErrorState(ErrorState &errorState)
       : refCount(0), errorArrayCache(errorState.errorArrayCache) {
