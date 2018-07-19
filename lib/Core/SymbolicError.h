@@ -178,7 +178,8 @@ public:
     return constraintsWithError;
   }
 
-  std::map<std::string, ref<Expr> > &getErrorExpressions() {
+  std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
+  getErrorExpressions() {
     return errorState->getStateErrorExpressions();
   }
 

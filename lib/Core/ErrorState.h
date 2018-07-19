@@ -43,7 +43,7 @@ private:
 
   std::map<uintptr_t, std::pair<ref<Expr>, ref<Expr> > > storedError;
 
-  std::map<std::string, ref<Expr> > errorExpressions;
+  std::map<uint64_t, std::pair<std::string, ref<Expr> > > errorExpressions;
 
   std::vector<ref<Expr> > inputErrorList;
 
@@ -103,7 +103,8 @@ public:
   ref<Expr> getScalingConstraint();
 
   // Getter for error expressions
-  std::map<std::string, ref<Expr> > &getStateErrorExpressions();
+  std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
+  getStateErrorExpressions();
 
   /// dump - Print the object content to stderr
   void dump() const {

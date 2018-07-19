@@ -555,18 +555,19 @@ void KleeHandler::processTestCase(const ExecutionState &state,
         delete probFile;
       }
 
-      llvm::raw_ostream *expression_file = openTestFile("expressions", id);
-      std::map<std::string, ref<Expr> > &expressions =
+      llvm::raw_ostream *expressionFile = openTestFile("expressions", id);
+      std::map<uint64_t, std::pair<std::string, ref<Expr> > > &expressions =
           state.symbolicError->getErrorExpressions();
-      for (std::map<std::string, ref<Expr> >::const_iterator
+      for (std::map<uint64_t,
+                    std::pair<std::string, ref<Expr> > >::const_iterator
                itexp = expressions.begin(),
                ieexp = expressions.end();
            itexp != ieexp; ++itexp) {
-        *expression_file << itexp->first << "\n"
-                         << PrettyExpressionBuilder::construct(
-                                &(*itexp->second)) << "\n\n";
+        *expressionFile << itexp->second.first << "\n"
+                        << PrettyExpressionBuilder::construct(
+                               &(*itexp->second.second)) << "\n\n";
       }
-      delete expression_file;
+      delete expressionFile;
     }
 
     if (errorMessage || WriteKQueries) {

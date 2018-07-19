@@ -554,39 +554,52 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
         std::pair<ref<Expr>, ref<Expr> >(error, valueWithError);
 
     if (inst) {
+      std::string str = "";
+      llvm::raw_string_ostream stream(str);
+      inst->print(stream);
+      stream.str().erase(
+          std::remove(stream.str().begin(), stream.str().end(), ','),
+          stream.str().end());
+      stream.str().erase(
+          std::remove(stream.str().begin(), stream.str().end(), '%'),
+          stream.str().end());
+      std::vector<std::string> tokens;
+      std::stringstream ss(stream.str());
+      while (ss >> stream.str())
+        tokens.push_back(stream.str());
       if (llvm::MDNode *n = inst->getMetadata("dbg")) {
-        std::string str = "";
-        llvm::raw_string_ostream stream(str);
-        inst->print(stream);
-        stream.str().erase(
-            std::remove(stream.str().begin(), stream.str().end(), ','),
-            stream.str().end());
-        stream.str().erase(
-            std::remove(stream.str().begin(), stream.str().end(), '%'),
-            stream.str().end());
-        std::vector<std::string> tokens;
-        std::stringstream ss(stream.str());
-        while (ss >> stream.str())
-          tokens.push_back(stream.str());
         llvm::DILocation loc(n);
         unsigned line = loc.getLineNumber();
         llvm::StringRef file = loc.getFilename();
         llvm::StringRef dir = loc.getDirectory();
         stream << " Line " << line << " of " << dir.str() << "/" << file.str();
-        if (llvm::BasicBlock *bb = inst->getParent()) {
-          if (llvm::Function *func = bb->getParent()) {
-            stream << " (" << func->getName() << ")";
-          }
+      } else {
+        stream << "!0 Line 0 of unknown/unknown";
+      }
+
+      if (llvm::BasicBlock *bb = inst->getParent()) {
+        if (llvm::Function *func = bb->getParent()) {
+          stream << " (" << func->getName() << ")";
         }
-        // update/save error expression
-        stream << ", " << tokens[4] << ", " << intAddress;
-        std::map<std::string, ref<Expr> >::const_iterator it =
-            errorExpressions.find(stream.str());
+      }
+
+      // update/save error expression
+      if (tokens.size() > 5) {
+        if (tokens.size() > 7) {
+          stream << ", " << tokens[4] << ", " << intAddress;
+        } else {
+          stream << ", " << tokens[2] << ", " << intAddress;
+        }
+        std::map<uint64_t, std::pair<std::string, ref<Expr> > >::const_iterator
+        it = errorExpressions.find(intAddress);
         if (it != errorExpressions.end()) {
-          errorExpressions[stream.str()] = error;
+          errorExpressions[intAddress] =
+              std::pair<std::string, ref<Expr> >(stream.str(), error);
         } else {
           errorExpressions.insert(
-              std::pair<std::string, ref<Expr> >(stream.str(), error));
+              std::pair<uint64_t, std::pair<std::string, ref<Expr> > >(
+                  intAddress,
+                  std::pair<std::string, ref<Expr> >(stream.str(), error)));
         }
       }
     }
@@ -787,10 +800,11 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
         }
         // update/save error expression
         stream << ", " << tokens[4] << ", " << intAddress;
-        std::map<std::string, ref<Expr> >::const_iterator it =
-            errorExpressions.find(stream.str());
+        std::map<uint64_t, std::pair<std::string, ref<Expr> > >::const_iterator
+        it = errorExpressions.find(intAddress);
         if (it != errorExpressions.end()) {
-          errorExpressions[stream.str()] = error;
+          errorExpressions[intAddress] =
+              std::pair<std::string, ref<Expr> >(stream.str(), error);
         }
       }
     }
@@ -843,6 +857,7 @@ ref<Expr> ErrorState::getScalingConstraint() {
   return NeExpr::create(scalingVal, ConstantExpr::create(0, Expr::Int8));
 }
 
-std::map<std::string, ref<Expr> > &ErrorState::getStateErrorExpressions() {
+std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
+ErrorState::getStateErrorExpressions() {
   return errorExpressions;
 }
