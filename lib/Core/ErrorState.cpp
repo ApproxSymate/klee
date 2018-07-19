@@ -585,11 +585,17 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
 
       // update/save error expression
       if (tokens.size() > 5) {
+        std::string name;
         if (tokens.size() > 7) {
-          stream << ", " << tokens[4] << ", " << intAddress;
+          name = tokens[4];
         } else {
-          stream << ", " << tokens[2] << ", " << intAddress;
+          name = tokens[2];
         }
+        stream << ", " << name << ", " << intAddress;
+
+        if (name == "null")
+          return;
+
         std::map<uint64_t, std::pair<std::string, ref<Expr> > >::const_iterator
         it = errorExpressions.find(intAddress);
         if (it != errorExpressions.end()) {
