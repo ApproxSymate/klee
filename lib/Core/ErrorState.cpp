@@ -541,8 +541,8 @@ void ErrorState::registerInputError(ref<Expr> error) {
     inputErrorList.push_back(error);
 }
 
-void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
-                                    ref<Expr> valueWithError,
+void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
+                                    ref<Expr> error, ref<Expr> valueWithError,
                                     llvm::Instruction *inst) {
   if (error.isNull())
     return;
@@ -553,53 +553,64 @@ void ErrorState::executeStoreSimple(ref<Expr> address, ref<Expr> error,
     storedError[intAddress] =
         std::pair<ref<Expr>, ref<Expr> >(error, valueWithError);
 
-    if (inst) {
-      std::string str = "";
-      llvm::raw_string_ostream stream(str);
-      inst->print(stream);
-      stream.str().erase(
-          std::remove(stream.str().begin(), stream.str().end(), ','),
-          stream.str().end());
-      stream.str().erase(
-          std::remove(stream.str().begin(), stream.str().end(), '%'),
-          stream.str().end());
-      std::vector<std::string> tokens;
-      std::stringstream ss(stream.str());
-      while (ss >> stream.str())
-        tokens.push_back(stream.str());
-      if (llvm::MDNode *n = inst->getMetadata("dbg")) {
-        llvm::DILocation loc(n);
-        unsigned line = loc.getLineNumber();
-        llvm::StringRef file = loc.getFilename();
-        llvm::StringRef dir = loc.getDirectory();
-        stream << " Line " << line << " of " << dir.str() << "/" << file.str();
-      } else {
-        stream << "!0 Line 0 of unknown/unknown";
-      }
-
-      if (llvm::BasicBlock *bb = inst->getParent()) {
-        if (llvm::Function *func = bb->getParent()) {
-          stream << " (" << func->getName() << ")";
-        }
-      }
-
-      // update/save error expression
-      if (tokens.size() > 5) {
-        if (tokens.size() > 7) {
-          stream << ", " << tokens[4] << ", " << intAddress;
+    if (ConstantExpr *cpBase = llvm::dyn_cast<ConstantExpr>(base)) {
+      uint64_t intBaseAddress = cpBase->getZExtValue();
+      if (inst) {
+        std::string str = "";
+        llvm::raw_string_ostream stream(str);
+        inst->print(stream);
+        stream.str().erase(
+            std::remove(stream.str().begin(), stream.str().end(), ','),
+            stream.str().end());
+        stream.str().erase(
+            std::remove(stream.str().begin(), stream.str().end(), '%'),
+            stream.str().end());
+        std::vector<std::string> tokens;
+        std::stringstream ss(stream.str());
+        while (ss >> stream.str())
+          tokens.push_back(stream.str());
+        if (llvm::MDNode *n = inst->getMetadata("dbg")) {
+          llvm::DILocation loc(n);
+          unsigned line = loc.getLineNumber();
+          llvm::StringRef file = loc.getFilename();
+          llvm::StringRef dir = loc.getDirectory();
+          stream << " Line " << line << " of " << dir.str() << "/"
+                 << file.str();
         } else {
-          stream << ", " << tokens[2] << ", " << intAddress;
+          stream << "!0 Line 0 of unknown/unknown";
         }
-        std::map<uint64_t, std::pair<std::string, ref<Expr> > >::const_iterator
-        it = errorExpressions.find(intAddress);
-        if (it != errorExpressions.end()) {
-          errorExpressions[intAddress] =
-              std::pair<std::string, ref<Expr> >(stream.str(), error);
-        } else {
-          errorExpressions.insert(
-              std::pair<uint64_t, std::pair<std::string, ref<Expr> > >(
-                  intAddress,
-                  std::pair<std::string, ref<Expr> >(stream.str(), error)));
+
+        if (llvm::BasicBlock *bb = inst->getParent()) {
+          if (llvm::Function *func = bb->getParent()) {
+            stream << " (" << func->getName() << ")";
+          }
+        }
+
+        // update/save error expression
+        if (tokens.size() > 5) {
+          std::string name;
+          if (tokens.size() > 7) {
+            name = tokens[4];
+          } else {
+            name = tokens[2];
+          }
+          stream << ", " << name << ", " << intBaseAddress;
+
+          if (name == "null")
+            return;
+
+          std::map<uint64_t,
+                   std::pair<std::string, ref<Expr> > >::const_iterator it =
+              errorExpressions.find(intBaseAddress);
+          if (it != errorExpressions.end()) {
+            errorExpressions[intBaseAddress] =
+                std::pair<std::string, ref<Expr> >(stream.str(), error);
+          } else {
+            errorExpressions.insert(
+                std::pair<uint64_t, std::pair<std::string, ref<Expr> > >(
+                    intBaseAddress,
+                    std::pair<std::string, ref<Expr> >(stream.str(), error)));
+          }
         }
       }
     }
@@ -683,7 +694,7 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
   ref<Expr> baseError = retrieveDeclaredInputError(base);
 
   if (baseError.isNull()) {
-    executeStoreSimple(address, error, nullExpr, 0);
+    executeStoreSimple(base, address, error, nullExpr, 0);
     return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
   }
 

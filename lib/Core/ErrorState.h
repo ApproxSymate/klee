@@ -85,7 +85,7 @@ public:
 
   void registerInputError(ref<Expr> error);
 
-  void executeStoreSimple(ref<Expr> address, ref<Expr> error,
+  void executeStoreSimple(ref<Expr> base, ref<Expr> address, ref<Expr> error,
                           ref<Expr> valueWithError, llvm::Instruction *inst);
 
   void declareInputError(ref<Expr> address, ref<Expr> error);
