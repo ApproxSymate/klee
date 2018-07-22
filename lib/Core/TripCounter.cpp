@@ -45,36 +45,39 @@ void TripCounter::analyzeSubLoops(llvm::ScalarEvolution &se,
   const std::vector<llvm::Loop *> &v = l->getSubLoops();
   const llvm::SCEV *scev = se.getBackedgeTakenCount(l);
   llvm::BasicBlock *header = l->getHeader();
+  llvm::Instruction *headerFirstInst = header->getFirstNonPHIOrDbgOrLifetime();
+  llvm::Instruction *exitFirstInst =
+      l->getExitBlock()->getFirstNonPHIOrDbgOrLifetime();
 
   headerBlocks.insert(header);
 
   realFirstInstruction.insert(header->begin());
 
+  exitBlock[headerFirstInst] = l->getExitBlock();
+
+  for (llvm::Loop::block_iterator it = l->block_begin(), ie = l->block_end();
+       it != ie; ++it) {
+    blockToFirstInstruction[*it] = headerFirstInst;
+  }
+  firstInstructionOfExit[exitFirstInst] = headerFirstInst;
+
+  int64_t count = DefaultTripCount;
+
   if (const llvm::SCEVConstant *scevConstant =
           llvm::dyn_cast<llvm::SCEVConstant>(scev)) {
-    llvm::Instruction *headerFirstInst =
-        header->getFirstNonPHIOrDbgOrLifetime();
-    llvm::Instruction *exitFirstInst =
-        l->getExitBlock()->getFirstNonPHIOrDbgOrLifetime();
+    count = scevConstant->getValue()->getSExtValue();
+    tripCount[headerFirstInst] = count;
 
     if (DebugPrecision) {
-      llvm::errs() << "Loop trip count [";
+      llvm::errs() << "SCEV loop trip count [";
       llvm::errs() << headerFirstInst->getParent()->getParent()->getName().str()
                    << ": ";
       if (llvm::MDNode *n = headerFirstInst->getMetadata("dbg")) {
         llvm::DILocation loc(n);
         llvm::errs() << "Line " << loc.getLineNumber();
       }
-      llvm::errs() << "]: " << scevConstant->getValue()->getSExtValue() << "\n";
+      llvm::errs() << "]: " << count << "\n";
     }
-
-    tripCount[headerFirstInst] = scevConstant->getValue()->getSExtValue();
-    exitBlock[headerFirstInst] = l->getExitBlock();
-    for (llvm::Loop::block_iterator it = l->block_begin(), ie = l->block_end();
-         it != ie; ++it) {
-      blockToFirstInstruction[*it] = headerFirstInst;
-    }
-    firstInstructionOfExit[exitFirstInst] = headerFirstInst;
   }
 
   for (std::vector<llvm::Loop *>::const_iterator it = v.begin(), ie = v.end();
@@ -103,18 +106,24 @@ bool TripCounter::getTripCount(llvm::Instruction *inst, int64_t &count,
     std::map<llvm::BasicBlock *, llvm::Instruction *>::const_iterator it =
         blockToFirstInstruction.find(bb);
     if (it != blockToFirstInstruction.end()) {
+      std::map<llvm::Instruction *, llvm::BasicBlock *>::const_iterator it2 =
+          exitBlock.find(inst);
+      if (it2 != exitBlock.end()) {
+        exit = it2->second;
+      }
+
       std::map<llvm::Instruction *, int64_t>::const_iterator it1 =
           tripCount.find(it->second);
       if (it1 != tripCount.end()) {
         count = it1->second;
-        std::map<llvm::Instruction *, llvm::BasicBlock *>::const_iterator it2 =
-            exitBlock.find(inst);
-        if (it2 != exitBlock.end()) {
-          exit = it2->second;
-        }
+        return true;
+      } else if (DefaultTripCount > 2) {
+        count = DefaultTripCount;
+        return true;
       }
     }
   }
+
   return false;
 }
 
