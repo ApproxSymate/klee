@@ -370,19 +370,33 @@ std::string PrettyExpressionBuilder::constructAShrByConstant(
 std::string PrettyExpressionBuilder::constructMulByConstant(std::string expr,
                                                             uint64_t x) {
   std::ostringstream stream;
-  stream << "(" << expr << " * " << x << ")";
+  if (x > 2147483648) {
+    uint32_t val = ~x + 1;
+    stream << "(" << expr << " * -" << val << ")";
+  } else
+    stream << "(" << expr << " * " << x << ")";
   return stream.str();
 }
 std::string PrettyExpressionBuilder::constructUDivByConstant(std::string expr,
                                                              uint64_t d) {
   std::ostringstream stream;
-  stream << "(" << expr << " / " << d << ")";
+  if (d > 2147483648) {
+    uint32_t val = ~d + 1;
+    stream << "(" << expr << " / -" << val << ")";
+  } else {
+    stream << "(" << expr << " / " << d << ")";
+  }
   return stream.str();
 }
 std::string PrettyExpressionBuilder::constructSDivByConstant(std::string expr,
                                                              uint64_t d) {
   std::ostringstream stream;
-  stream << "(" << expr << " / " << d << ")";
+  if (d > 2147483648) {
+    uint32_t val = ~d + 1;
+    stream << "(" << expr << " / -" << val << ")";
+  } else {
+    stream << "(" << expr << " / " << d << ")";
+  }
   return stream.str();
 }
 
