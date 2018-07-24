@@ -179,7 +179,7 @@ public:
     return constraintsWithError;
   }
 
-  std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
+  std::map<std::string, std::pair<std::string, ref<Expr> > > &
   getErrorExpressions() {
     return errorState->getStateErrorExpressions();
   }

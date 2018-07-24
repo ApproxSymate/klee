@@ -580,9 +580,11 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
           stream << "!0 Line 0 of unknown/unknown";
         }
 
+        std::string funcName = "";
         if (llvm::BasicBlock *bb = inst->getParent()) {
           if (llvm::Function *func = bb->getParent()) {
-            stream << " (" << func->getName() << ")";
+            funcName = func->getName();
+            stream << " (" << funcName << ")";
           }
         }
 
@@ -599,16 +601,20 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
           if (name == "null")
             return;
 
-          std::map<uint64_t,
+          std::ostringstream keyStream;
+          keyStream << intBaseAddress << " " << funcName;
+          std::string key = keyStream.str();
+
+          std::map<std::string,
                    std::pair<std::string, ref<Expr> > >::const_iterator it =
-              errorExpressions.find(intBaseAddress);
+              errorExpressions.find(key);
           if (it != errorExpressions.end()) {
-            errorExpressions[intBaseAddress] =
+            errorExpressions[key] =
                 std::pair<std::string, ref<Expr> >(stream.str(), error);
           } else {
             errorExpressions.insert(
-                std::pair<uint64_t, std::pair<std::string, ref<Expr> > >(
-                    intBaseAddress,
+                std::pair<std::string, std::pair<std::string, ref<Expr> > >(
+                    key,
                     std::pair<std::string, ref<Expr> >(stream.str(), error)));
           }
         }
@@ -804,17 +810,26 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
         llvm::StringRef file = loc.getFilename();
         llvm::StringRef dir = loc.getDirectory();
         stream << " Line " << line << " of " << dir.str() << "/" << file.str();
+
+        std::string funcName = "";
         if (llvm::BasicBlock *bb = inst->getParent()) {
           if (llvm::Function *func = bb->getParent()) {
-            stream << " (" << func->getName() << ")";
+            funcName = func->getName();
+            stream << " (" << funcName << ")";
           }
         }
+
+        std::ostringstream keyStream;
+        keyStream << intAddress << " " << funcName;
+        std::string key = keyStream.str();
+
         // update/save error expression
         stream << ", " << tokens[4] << ", " << intAddress;
-        std::map<uint64_t, std::pair<std::string, ref<Expr> > >::const_iterator
-        it = errorExpressions.find(intAddress);
+        std::map<std::string,
+                 std::pair<std::string, ref<Expr> > >::const_iterator it =
+            errorExpressions.find(key);
         if (it != errorExpressions.end()) {
-          errorExpressions[intAddress] =
+          errorExpressions[key] =
               std::pair<std::string, ref<Expr> >(stream.str(), error);
         }
       }
@@ -868,7 +883,7 @@ ref<Expr> ErrorState::getScalingConstraint() {
   return NeExpr::create(scalingVal, ConstantExpr::create(0, Expr::Int8));
 }
 
-std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
+std::map<std::string, std::pair<std::string, ref<Expr> > > &
 ErrorState::getStateErrorExpressions() {
   return errorExpressions;
 }
