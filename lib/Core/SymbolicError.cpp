@@ -270,6 +270,9 @@ void SymbolicError::executeStore(ref<Expr> base, ref<Expr> address,
         assert(!"non-constant address");
       }
     }
+    if (llvm::isa<ConstantExpr>(value)) {
+      base = value;
+    }
     storeError(base, address, error, valueWithError, inst);
 }
 

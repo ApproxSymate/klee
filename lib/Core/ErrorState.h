@@ -96,6 +96,8 @@ public:
 
   bool hasStoredError(ref<Expr> address) const;
 
+  bool hasDeclaredInputError(ref<Expr> address) const;
+
   /// \brief Retrieve the error expression from the stored error expressions
   /// map. This returns 0 when the address is not found.
   std::pair<ref<Expr>, ref<Expr> > executeLoad(llvm::Instruction *inst,

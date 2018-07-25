@@ -605,6 +605,15 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
           keyStream << intBaseAddress << " " << funcName;
           std::string key = keyStream.str();
 
+          if (ConstantExpr *cpError = llvm::dyn_cast<ConstantExpr>(error)) {
+            if (cpError->getZExtValue() == 0) {
+              if (hasStoredError(base))
+                error = retrieveStoredError(base).first;
+              else if (hasDeclaredInputError(base))
+                error = retrieveDeclaredInputError(base);
+            }
+          }
+
           std::map<std::string,
                    std::pair<std::string, ref<Expr> > >::const_iterator it =
               errorExpressions.find(key);
@@ -680,6 +689,18 @@ bool ErrorState::hasStoredError(ref<Expr> address) const {
     std::map<uintptr_t, std::pair<ref<Expr>, ref<Expr> > >::const_iterator it =
         storedError.find(cp->getZExtValue());
     if (it != storedError.end()) {
+      return true;
+    } else
+      return false;
+  } else
+    return false;
+}
+
+bool ErrorState::hasDeclaredInputError(ref<Expr> address) const {
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    std::map<uintptr_t, ref<Expr> >::const_iterator it =
+        declaredInputError.find(cp->getZExtValue());
+    if (it != declaredInputError.end()) {
       return true;
     } else
       return false;
