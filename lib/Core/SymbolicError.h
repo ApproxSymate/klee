@@ -144,9 +144,11 @@ public:
                     ref<Expr> error, ref<Expr> valueWithError,
                     llvm::Instruction *inst);
 
-  void storeError(ref<Expr> base, ref<Expr> address, ref<Expr> error,
-                  ref<Expr> errorWithValue, llvm::Instruction *inst) {
-    errorState->executeStoreSimple(base, address, error, errorWithValue, inst);
+  void storeError(ref<Expr> base, ref<Expr> address, ref<Expr> value,
+                  ref<Expr> error, ref<Expr> errorWithValue,
+                  llvm::Instruction *inst) {
+    errorState->executeStoreSimple(base, address, value, error, errorWithValue,
+                                   inst);
   }
 
   void declareInputError(ref<Expr> address, ref<Expr> error) {

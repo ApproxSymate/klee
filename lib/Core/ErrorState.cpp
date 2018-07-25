@@ -542,7 +542,8 @@ void ErrorState::registerInputError(ref<Expr> error) {
 }
 
 void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
-                                    ref<Expr> error, ref<Expr> valueWithError,
+                                    ref<Expr> value, ref<Expr> error,
+                                    ref<Expr> valueWithError,
                                     llvm::Instruction *inst) {
   if (error.isNull())
     return;
@@ -605,8 +606,12 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
           keyStream << intBaseAddress << " " << funcName;
           std::string key = keyStream.str();
 
+          // In case of a pointer address, check if whatever it is pointing to
+          // has error associated with it
+          // This is needed to get the error of function call arguments
           if (ConstantExpr *cpError = llvm::dyn_cast<ConstantExpr>(error)) {
             if (cpError->getZExtValue() == 0) {
+              base = value;
               if (hasStoredError(base))
                 error = retrieveStoredError(base).first;
               else if (hasDeclaredInputError(base))
@@ -721,7 +726,7 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
   ref<Expr> baseError = retrieveDeclaredInputError(base);
 
   if (baseError.isNull()) {
-    executeStoreSimple(base, address, error, nullExpr, 0);
+    executeStoreSimple(base, address, nullExpr, error, nullExpr, 0);
     return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
   }
 
