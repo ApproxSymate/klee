@@ -43,7 +43,7 @@ private:
 
   std::map<uintptr_t, std::pair<ref<Expr>, ref<Expr> > > storedError;
 
-  std::map<uint64_t, std::pair<std::string, ref<Expr> > > errorExpressions;
+  std::map<std::string, std::pair<std::string, ref<Expr> > > errorExpressions;
 
   std::vector<ref<Expr> > inputErrorList;
 
@@ -85,8 +85,9 @@ public:
 
   void registerInputError(ref<Expr> error);
 
-  void executeStoreSimple(ref<Expr> base, ref<Expr> address, ref<Expr> error,
-                          ref<Expr> valueWithError, llvm::Instruction *inst);
+  void executeStoreSimple(ref<Expr> base, ref<Expr> address, ref<Expr> value,
+                          ref<Expr> error, ref<Expr> valueWithError,
+                          llvm::Instruction *inst);
 
   void declareInputError(ref<Expr> address, ref<Expr> error);
 
@@ -95,6 +96,8 @@ public:
   ref<Expr> retrieveDeclaredInputError(ref<Expr> address) const;
 
   bool hasStoredError(ref<Expr> address) const;
+
+  bool hasDeclaredInputError(ref<Expr> address) const;
 
   /// \brief Retrieve the error expression from the stored error expressions
   /// map. This returns 0 when the address is not found.
@@ -110,7 +113,7 @@ public:
   ref<Expr> getScalingConstraint();
 
   // Getter for error expressions
-  std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
+  std::map<std::string, std::pair<std::string, ref<Expr> > > &
   getStateErrorExpressions();
 
   // Getter for math call functions and arguments

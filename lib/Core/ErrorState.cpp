@@ -542,7 +542,8 @@ void ErrorState::registerInputError(ref<Expr> error) {
 }
 
 void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
-                                    ref<Expr> error, ref<Expr> valueWithError,
+                                    ref<Expr> value, ref<Expr> error,
+                                    ref<Expr> valueWithError,
                                     llvm::Instruction *inst) {
   if (error.isNull())
     return;
@@ -580,9 +581,11 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
           stream << "!0 Line 0 of unknown/unknown";
         }
 
+        std::string funcName = "";
         if (llvm::BasicBlock *bb = inst->getParent()) {
           if (llvm::Function *func = bb->getParent()) {
-            stream << " (" << func->getName() << ")";
+            funcName = func->getName();
+            stream << " (" << funcName << ")";
           }
         }
 
@@ -599,16 +602,33 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
           if (name == "null")
             return;
 
-          std::map<uint64_t,
+          std::ostringstream keyStream;
+          keyStream << intBaseAddress << " " << funcName;
+          std::string key = keyStream.str();
+
+          // In case of a pointer address, check if whatever it is pointing to
+          // has error associated with it
+          // This is needed to get the error of function call arguments
+          if (ConstantExpr *cpError = llvm::dyn_cast<ConstantExpr>(error)) {
+            if (cpError->getZExtValue() == 0) {
+              base = value;
+              if (hasStoredError(base))
+                error = retrieveStoredError(base).first;
+              else if (hasDeclaredInputError(base))
+                error = retrieveDeclaredInputError(base);
+            }
+          }
+
+          std::map<std::string,
                    std::pair<std::string, ref<Expr> > >::const_iterator it =
-              errorExpressions.find(intBaseAddress);
+              errorExpressions.find(key);
           if (it != errorExpressions.end()) {
-            errorExpressions[intBaseAddress] =
+            errorExpressions[key] =
                 std::pair<std::string, ref<Expr> >(stream.str(), error);
           } else {
             errorExpressions.insert(
-                std::pair<uint64_t, std::pair<std::string, ref<Expr> > >(
-                    intBaseAddress,
+                std::pair<std::string, std::pair<std::string, ref<Expr> > >(
+                    key,
                     std::pair<std::string, ref<Expr> >(stream.str(), error)));
           }
         }
@@ -681,6 +701,18 @@ bool ErrorState::hasStoredError(ref<Expr> address) const {
     return false;
 }
 
+bool ErrorState::hasDeclaredInputError(ref<Expr> address) const {
+  if (ConstantExpr *cp = llvm::dyn_cast<ConstantExpr>(address)) {
+    std::map<uintptr_t, ref<Expr> >::const_iterator it =
+        declaredInputError.find(cp->getZExtValue());
+    if (it != declaredInputError.end()) {
+      return true;
+    } else
+      return false;
+  } else
+    return false;
+}
+
 std::pair<ref<Expr>, ref<Expr> >
 ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
                         ref<Expr> address, ref<Expr> offset) {
@@ -694,7 +726,7 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
   ref<Expr> baseError = retrieveDeclaredInputError(base);
 
   if (baseError.isNull()) {
-    executeStoreSimple(base, address, error, nullExpr, 0);
+    executeStoreSimple(base, address, nullExpr, error, nullExpr, 0);
     return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
   }
 
@@ -804,17 +836,26 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
         llvm::StringRef file = loc.getFilename();
         llvm::StringRef dir = loc.getDirectory();
         stream << " Line " << line << " of " << dir.str() << "/" << file.str();
+
+        std::string funcName = "";
         if (llvm::BasicBlock *bb = inst->getParent()) {
           if (llvm::Function *func = bb->getParent()) {
-            stream << " (" << func->getName() << ")";
+            funcName = func->getName();
+            stream << " (" << funcName << ")";
           }
         }
+
+        std::ostringstream keyStream;
+        keyStream << intAddress << " " << funcName;
+        std::string key = keyStream.str();
+
         // update/save error expression
         stream << ", " << tokens[4] << ", " << intAddress;
-        std::map<uint64_t, std::pair<std::string, ref<Expr> > >::const_iterator
-        it = errorExpressions.find(intAddress);
+        std::map<std::string,
+                 std::pair<std::string, ref<Expr> > >::const_iterator it =
+            errorExpressions.find(key);
         if (it != errorExpressions.end()) {
-          errorExpressions[intAddress] =
+          errorExpressions[key] =
               std::pair<std::string, ref<Expr> >(stream.str(), error);
         }
       }
@@ -868,7 +909,7 @@ ref<Expr> ErrorState::getScalingConstraint() {
   return NeExpr::create(scalingVal, ConstantExpr::create(0, Expr::Int8));
 }
 
-std::map<uint64_t, std::pair<std::string, ref<Expr> > > &
+std::map<std::string, std::pair<std::string, ref<Expr> > > &
 ErrorState::getStateErrorExpressions() {
   return errorExpressions;
 }
