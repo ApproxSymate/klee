@@ -4120,7 +4120,10 @@ void Executor::executeAlloc(ExecutionState &state,
                             const ObjectState *reallocFrom) {
   size = toUnique(state, size);
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(size)) {
-    const llvm::Value *allocSite = state.prevPC->inst;
+    const llvm::Value *allocSite =
+        (LoopBreaking && state.prevPC->inst != target->inst)
+            ? target->inst
+            : state.prevPC->inst;
     size_t allocationAlignment = getAllocationAlignment(allocSite);
     MemoryObject *mo =
         memory->allocate(CE->getZExtValue(), isLocal, /*isGlobal=*/false,
