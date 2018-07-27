@@ -243,8 +243,10 @@ void WeightedRandomSearcher::update(
     const std::vector<ExecutionState *> &removedStates) {
   if (current && updateWeights &&
       std::find(removedStates.begin(), removedStates.end(), current) ==
-          removedStates.end())
-    states->update(current, getWeight(current));
+          removedStates.end()) {
+    if (!LoopBreaking || states->inTree(current))
+      states->update(current, getWeight(current));
+  }
 
   for (std::vector<ExecutionState *>::const_iterator it = addedStates.begin(),
                                                      ie = addedStates.end();
@@ -256,7 +258,8 @@ void WeightedRandomSearcher::update(
   for (std::vector<ExecutionState *>::const_iterator it = removedStates.begin(),
                                                      ie = removedStates.end();
        it != ie; ++it) {
-    states->remove(*it);
+    if (!LoopBreaking || states->inTree(*it))
+      states->remove(*it);
   }
 }
 

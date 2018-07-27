@@ -3490,7 +3490,10 @@ void Executor::updateStates(ExecutionState *current) {
        it != ie; ++it) {
     ExecutionState *es = *it;
     std::set<ExecutionState*>::iterator it2 = states.find(es);
+    if (LoopBreaking && it2 != states.end())
+      continue;
     assert(it2!=states.end());
+
     states.erase(it2);
     std::map<ExecutionState*, std::vector<SeedInfo> >::iterator it3 = 
       seedMap.find(es);
