@@ -3699,7 +3699,8 @@ void Executor::run(ExecutionState &initialState) {
   std::vector<ExecutionState *> newStates(states.begin(), states.end());
   searcher->update(0, newStates, std::vector<ExecutionState *>());
 
-  while (!states.empty() && !haltExecution) {
+  while (!states.empty() && !haltExecution &&
+         (!LoopBreaking || !searcher->empty())) {
     ExecutionState &state = searcher->selectState();
     KInstruction *ki = state.pc;
     stepInstruction(state);
