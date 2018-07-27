@@ -14,6 +14,7 @@
 #include "PTree.h"
 #include "StatsTracker.h"
 
+#include "klee/CommandLine.h"
 #include "klee/ExecutionState.h"
 #include "klee/Statistics.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
@@ -648,4 +649,8 @@ void InterleavedSearcher::update(
   for (std::vector<Searcher*>::const_iterator it = searchers.begin(),
          ie = searchers.end(); it != ie; ++it)
     (*it)->update(current, addedStates, removedStates);
+}
+
+bool InterleavedSearcher::empty() {
+  return LoopBreaking ? searchers[index - 1]->empty() : searchers[0]->empty();
 }
