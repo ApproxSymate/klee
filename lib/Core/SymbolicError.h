@@ -221,6 +221,11 @@ public:
   std::string getNewMathVarName(std::string mathFunctionName) {
     return errorState->createNewMathVarName(mathFunctionName);
   }
+
+  void saveMemcpyCallInfo(llvm::Instruction *inst, unsigned lineNumber,
+                          std::string functionName) {
+    errorState->saveMemcpyStoreInfo(inst, lineNumber, functionName);
+  }
 };
 }
 

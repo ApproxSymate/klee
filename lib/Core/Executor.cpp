@@ -61,6 +61,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/TypeBuilder.h"
+#include "llvm/DebugInfo.h"
 #else
 #include "llvm/Attributes.h"
 #include "llvm/BasicBlock.h"
@@ -70,6 +71,7 @@
 #include "llvm/IntrinsicInst.h"
 #include "llvm/LLVMContext.h"
 #include "llvm/Module.h"
+#include "llvm/DebugInfo.h"
 #if LLVM_VERSION_CODE <= LLVM_VERSION(3, 1)
 #include "llvm/Target/TargetData.h"
 #else
@@ -2483,6 +2485,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     ref<Expr> value = valueCell.value;
     ref<Expr> error = valueCell.error;
     ref<Expr> valueWithError = valueCell.valueWithError;
+
     executeMemoryOperation(state, true, base, value, error, valueWithError, ki);
     break;
   }
@@ -3443,6 +3446,34 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   default:
     terminateStateOnExecError(state, "illegal instruction");
     break;
+  }
+
+  // if the next instruction is a call to memcpy, save the current instructions
+  // line number
+  if ((*state.pc).inst->getOpcode() == Instruction::Call) {
+    Instruction *nextInst = (*state.pc).inst;
+
+    CallSite cs(nextInst);
+    Value *fp = cs.getCalledValue();
+    Function *f = getTargetFunction(fp, state);
+
+    if (f && f->getName().str() == "memcpy") {
+      if (MDNode *n = i->getMetadata("dbg")) {
+        llvm::DILocation loc(n);
+        unsigned line = loc.getLineNumber();
+
+        std::string funcName = "";
+        if (llvm::BasicBlock *bb = i->getParent()) {
+          if (llvm::Function *func = bb->getParent()) {
+            funcName = func->getName();
+          }
+        }
+
+        // save line number and function name along with instruction
+        state.symbolicError->saveMemcpyCallInfo((*state.pc).inst, line,
+                                                funcName);
+      }
+    }
   }
 }
 
