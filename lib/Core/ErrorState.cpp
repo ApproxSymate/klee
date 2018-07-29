@@ -554,6 +554,9 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
     storedError[intAddress] =
         std::pair<ref<Expr>, ref<Expr> >(error, valueWithError);
 
+    unsigned line = 0;
+    llvm::StringRef file = "";
+    llvm::StringRef dir = "";
     if (ConstantExpr *cpBase = llvm::dyn_cast<ConstantExpr>(base)) {
       uint64_t intBaseAddress = cpBase->getZExtValue();
       if (inst) {
@@ -572,20 +575,19 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
           tokens.push_back(stream.str());
         if (llvm::MDNode *n = inst->getMetadata("dbg")) {
           llvm::DILocation loc(n);
-          unsigned line = loc.getLineNumber();
-          llvm::StringRef file = loc.getFilename();
-          llvm::StringRef dir = loc.getDirectory();
-          stream << " Line " << line << " of " << dir.str() << "/"
-                 << file.str();
+          line = loc.getLineNumber();
+          file = loc.getFilename();
+          dir = loc.getDirectory();
         } else {
-          stream << "!0 Line 0 of unknown/unknown";
+          line = 0;
+          file = "unknown";
+          dir = "unknown";
         }
 
         std::string funcName = "";
         if (llvm::BasicBlock *bb = inst->getParent()) {
           if (llvm::Function *func = bb->getParent()) {
             funcName = func->getName();
-            stream << " (" << funcName << ")";
           }
         }
 
@@ -597,7 +599,6 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
           } else {
             name = tokens[2];
           }
-          stream << ", " << name << ", " << intBaseAddress;
 
           if (name == "null")
             return;
@@ -618,6 +619,18 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
                 error = retrieveDeclaredInputError(base);
             }
           }
+
+          if (funcName == "memcpy") {
+            std::pair<unsigned, std::string> memcpyInfo =
+                retrieveMemcpyStoreInfo();
+            line = memcpyInfo.first;
+            funcName = memcpyInfo.second;
+          }
+
+          stream << " Line " << line << " of " << dir.str() << "/"
+                 << file.str();
+          stream << " (" << funcName << ")";
+          stream << ", " << name << ", " << intBaseAddress;
 
           std::map<std::string,
                    std::pair<std::string, ref<Expr> > >::const_iterator it =
@@ -938,4 +951,19 @@ std::string ErrorState::createNewMathVarName(std::string mathFunctionName) {
   std::ostringstream str;
   str << mathVarCount;
   return mathFunctionName + "_" + str.str();
+}
+
+void ErrorState::saveMemcpyStoreInfo(llvm::Instruction *inst,
+                                     unsigned lineNumber,
+                                     std::string functionName) {
+  memcpyStoreInfo.clear();
+  memcpyStoreInfo.push_back(
+      std::pair<unsigned, std::string>(lineNumber, functionName));
+}
+
+std::pair<unsigned, std::string> ErrorState::retrieveMemcpyStoreInfo() {
+  if (!memcpyStoreInfo.empty())
+    return memcpyStoreInfo.back();
+  else
+    return std::pair<unsigned, std::string>(0, "not found");
 }

@@ -49,6 +49,8 @@ private:
 
   std::map<std::string, std::vector<Cell> > mathCallArgs;
 
+  std::vector<std::pair<unsigned, std::string> > memcpyStoreInfo;
+
   //@breif Used to generate return variable names for math function calls
   int mathVarCount;
 
@@ -65,6 +67,7 @@ public:
     outputString = errorState.outputString;
     mathCallArgs = errorState.mathCallArgs;
     mathVarCount = errorState.mathVarCount;
+    memcpyStoreInfo = errorState.memcpyStoreInfo;
   }
 
   ~ErrorState();
@@ -130,6 +133,11 @@ public:
   void storeMathCallArgs(std::string varName, std::vector<Cell> &arguments);
 
   std::string createNewMathVarName(std::string mathFunctionName);
+
+  void saveMemcpyStoreInfo(llvm::Instruction *inst, unsigned lineNumber,
+                           std::string functionName);
+
+  std::pair<unsigned, std::string> retrieveMemcpyStoreInfo();
 };
 }
 
