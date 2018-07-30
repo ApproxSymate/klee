@@ -604,7 +604,7 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
             return;
 
           std::ostringstream keyStream;
-          keyStream << intBaseAddress << " " << funcName;
+          keyStream << intBaseAddress << " " << funcName << " " << name;
           std::string key = keyStream.str();
 
           // In case of a pointer address, check if whatever it is pointing to
@@ -859,7 +859,7 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
         }
 
         std::ostringstream keyStream;
-        keyStream << intAddress << " " << funcName;
+        keyStream << intAddress << " " << funcName << " " << tokens[4];
         std::string key = keyStream.str();
 
         // update/save error expression
