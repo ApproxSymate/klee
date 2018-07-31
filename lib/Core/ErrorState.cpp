@@ -739,6 +739,11 @@ ErrorState::executeLoad(llvm::Instruction *inst, ref<Expr> base,
   ref<Expr> baseError = retrieveDeclaredInputError(base);
 
   if (baseError.isNull()) {
+    if (hasStoredError(base))
+      baseError = retrieveStoredError(base).first;
+  }
+
+  if (baseError.isNull()) {
     executeStoreSimple(base, address, nullExpr, error, nullExpr, 0);
     return std::pair<ref<Expr>, ref<Expr> >(error, nullExpr);
   }
