@@ -266,8 +266,6 @@ void SymbolicError::executeStore(ref<Expr> base, ref<Expr> address,
             initWritesErrorStack.back().end()) {
           initErrorMap[address] = error;
         }
-      } else {
-        assert(!"non-constant address");
       }
     }
     storeError(base, address, value, error, valueWithError, inst);

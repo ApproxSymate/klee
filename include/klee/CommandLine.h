@@ -75,6 +75,8 @@ extern llvm::cl::opt<bool> DebugPrecision;
 
 extern llvm::cl::opt<bool> LoopBreaking;
 
+extern llvm::cl::opt<int> DefaultTripCount;
+
 extern llvm::cl::opt<bool> Scaling;
 
 extern llvm::cl::opt<bool> MathCalls;

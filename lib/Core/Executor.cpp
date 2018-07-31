@@ -3490,7 +3490,10 @@ void Executor::updateStates(ExecutionState *current) {
        it != ie; ++it) {
     ExecutionState *es = *it;
     std::set<ExecutionState*>::iterator it2 = states.find(es);
+    if (LoopBreaking && it2 != states.end())
+      continue;
     assert(it2!=states.end());
+
     states.erase(it2);
     std::map<ExecutionState*, std::vector<SeedInfo> >::iterator it3 = 
       seedMap.find(es);
@@ -3696,7 +3699,8 @@ void Executor::run(ExecutionState &initialState) {
   std::vector<ExecutionState *> newStates(states.begin(), states.end());
   searcher->update(0, newStates, std::vector<ExecutionState *>());
 
-  while (!states.empty() && !haltExecution) {
+  while (!states.empty() && !haltExecution &&
+         (!LoopBreaking || !searcher->empty())) {
     ExecutionState &state = searcher->selectState();
     KInstruction *ki = state.pc;
     stepInstruction(state);
@@ -4120,7 +4124,10 @@ void Executor::executeAlloc(ExecutionState &state,
                             const ObjectState *reallocFrom) {
   size = toUnique(state, size);
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(size)) {
-    const llvm::Value *allocSite = state.prevPC->inst;
+    const llvm::Value *allocSite =
+        (LoopBreaking && state.prevPC->inst != target->inst)
+            ? target->inst
+            : state.prevPC->inst;
     size_t allocationAlignment = getAllocationAlignment(allocSite);
     MemoryObject *mo =
         memory->allocate(CE->getZExtValue(), isLocal, /*isGlobal=*/false,

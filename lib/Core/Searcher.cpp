@@ -14,6 +14,7 @@
 #include "PTree.h"
 #include "StatsTracker.h"
 
+#include "klee/CommandLine.h"
 #include "klee/ExecutionState.h"
 #include "klee/Statistics.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
@@ -243,8 +244,10 @@ void WeightedRandomSearcher::update(
     const std::vector<ExecutionState *> &removedStates) {
   if (current && updateWeights &&
       std::find(removedStates.begin(), removedStates.end(), current) ==
-          removedStates.end())
-    states->update(current, getWeight(current));
+          removedStates.end()) {
+    if (!LoopBreaking || states->inTree(current))
+      states->update(current, getWeight(current));
+  }
 
   for (std::vector<ExecutionState *>::const_iterator it = addedStates.begin(),
                                                      ie = addedStates.end();
@@ -256,7 +259,8 @@ void WeightedRandomSearcher::update(
   for (std::vector<ExecutionState *>::const_iterator it = removedStates.begin(),
                                                      ie = removedStates.end();
        it != ie; ++it) {
-    states->remove(*it);
+    if (!LoopBreaking || states->inTree(*it))
+      states->remove(*it);
   }
 }
 
@@ -645,4 +649,8 @@ void InterleavedSearcher::update(
   for (std::vector<Searcher*>::const_iterator it = searchers.begin(),
          ie = searchers.end(); it != ie; ++it)
     (*it)->update(current, addedStates, removedStates);
+}
+
+bool InterleavedSearcher::empty() {
+  return LoopBreaking ? searchers[index - 1]->empty() : searchers[0]->empty();
 }

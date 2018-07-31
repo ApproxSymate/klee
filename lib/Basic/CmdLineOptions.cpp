@@ -118,6 +118,15 @@ llvm::cl::opt<bool> LoopBreaking(
         "Enable loop breaking: effective only when -precision is specified"),
     llvm::cl::init(false));
 
+llvm::cl::opt<int> DefaultTripCount(
+    "default-trip-count", llvm::cl::init(-1), llvm::cl::value_desc("number"),
+    llvm::cl::desc("Set the default trip count for loop breaking, for loops "
+                   "for which LLVM scalar evolution does not derive constant "
+                   "trip count. The value needs to be greater than two to be "
+                   "effective. Values less than or equals two means that loops "
+                   "without trip counts are not broken. Default value is -1, "
+                   "and this option is only effective with -loop-breaking."));
+
 llvm::cl::opt<bool>
     UseAssignmentValidatingSolver("debug-assignment-validating-solver",
                                   llvm::cl::init(false));
