@@ -933,7 +933,7 @@ std::map<std::string, std::vector<Cell> > &ErrorState::getMathExpressions() {
 
 ref<Expr> ErrorState::createNewMathErrorVar(ref<Expr> mathVar,
                                             std::string mathVarName) {
-  const std::string errorVarName = mathVarName + "err_";
+  const std::string errorVarName = mathVarName + "_err";
   const Array *array = errorArrayCache->CreateArray(errorVarName, Expr::Int8);
   ref<Expr> mathErrorVar = ReadExpr::create(
       UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
