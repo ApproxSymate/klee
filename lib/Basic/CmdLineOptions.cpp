@@ -137,6 +137,12 @@ llvm::cl::opt<bool> Scaling(
         "Scale numerator of divisions to prevent rounding the result to zero"),
     llvm::cl::init(false));
 
+llvm::cl::opt<bool> ApproximatePointers(
+    "approximate-pointers",
+    llvm::cl::desc(
+        "Approximate the pointer based on the value it is pointing to"),
+    llvm::cl::init(false));
+
 llvm::cl::opt<bool> MathCalls("math-calls",
                               llvm::cl::desc("Handle math function calls"),
                               llvm::cl::init(false));

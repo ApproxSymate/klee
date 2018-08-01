@@ -607,16 +607,18 @@ void ErrorState::executeStoreSimple(ref<Expr> base, ref<Expr> address,
           keyStream << intBaseAddress << " " << funcName << " " << name;
           std::string key = keyStream.str();
 
-          // In case of a pointer address, check if whatever it is pointing to
-          // has error associated with it
-          // This is needed to get the error of function call arguments
-          if (ConstantExpr *cpError = llvm::dyn_cast<ConstantExpr>(error)) {
-            if (cpError->getZExtValue() == 0) {
-              base = value;
-              if (hasStoredError(base))
-                error = retrieveStoredError(base).first;
-              else if (hasDeclaredInputError(base))
-                error = retrieveDeclaredInputError(base);
+          if (ApproximatePointers) {
+            // In case of a pointer address, check if whatever it is pointing to
+            // has error associated with it
+            // This is needed to get the error of function call arguments
+            if (ConstantExpr *cpError = llvm::dyn_cast<ConstantExpr>(error)) {
+              if (cpError->getZExtValue() == 0) {
+                base = value;
+                if (hasStoredError(base))
+                  error = retrieveStoredError(base).first;
+                else if (hasDeclaredInputError(base))
+                  error = retrieveDeclaredInputError(base);
+              }
             }
           }
 
