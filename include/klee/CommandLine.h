@@ -79,6 +79,8 @@ extern llvm::cl::opt<int> DefaultTripCount;
 
 extern llvm::cl::opt<bool> Scaling;
 
+extern llvm::cl::opt<bool> ApproximatePointers;
+
 extern llvm::cl::opt<bool> MathCalls;
 
 extern llvm::cl::opt<int> MultiKTest;
