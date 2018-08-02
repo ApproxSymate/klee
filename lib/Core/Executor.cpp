@@ -2159,9 +2159,18 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     const Cell &lCell = eval(ki, 0, state);
     const Cell &rCell = eval(ki, 1, state);
 
-    ref<Expr> left = lCell.value;
-    ref<Expr> right = rCell.value;
-    ref<Expr> result = SRemExpr::create(left, right);
+    int leftWidth = lCell.value->getWidth();
+    int rightWidth = rCell.value->getWidth();
+
+    ref<Expr> extendedLeft = lCell.value;
+    ref<Expr> extendedRight = rCell.value;
+    if (leftWidth > rightWidth) {
+      extendedLeft = ZExtExpr::create(extendedLeft, rightWidth);
+    } else if (leftWidth < rightWidth) {
+      extendedRight = ZExtExpr::create(extendedRight, leftWidth);
+    }
+
+    ref<Expr> result = SRemExpr::create(extendedLeft, extendedRight);
 
     std::vector<Cell> arguments;
     arguments.push_back(lCell);
