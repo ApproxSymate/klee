@@ -55,12 +55,20 @@ std::string appendTab(const std::string &prefix) { return prefix + "        "; }
 
 std::string PrettyExpressionBuilder::bvConst32(uint32_t value) {
   std::ostringstream stream;
-  stream << value;
+  if (value > 2147483648) {
+    value = ~value + 1;
+    stream << "-" << value;
+  } else
+    stream << value;
   return stream.str();
 }
 std::string PrettyExpressionBuilder::bvConst64(uint64_t value) {
   std::ostringstream stream;
-  stream << value;
+  if (value >> 63) {
+    value = ~value + 1;
+    stream << "-" << value;
+  } else
+    stream << value;
   return stream.str();
 }
 std::string PrettyExpressionBuilder::bvZExtConst(uint64_t value) {
