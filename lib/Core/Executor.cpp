@@ -3956,8 +3956,8 @@ static std::set<std::string> okExternals(okExternalsList,
                                          okExternalsList + 
                                          (sizeof(okExternalsList)/sizeof(okExternalsList[0])));
 
-static const char *mathCallNames[] = { "sin", "cos",  "sqrt",
-                                       "abs", "fabs", "round" };
+static const char *mathCallNames[] = { "sin",  "cos",   "sqrt", "abs",
+                                       "fabs", "round", "exp" };
 
 static std::set<std::string> externalMathCallsList(
     mathCallNames,
