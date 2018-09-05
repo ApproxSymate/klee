@@ -1010,9 +1010,9 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
     addConstraint(*falseState, Expr::createIsZero(condition));
 
     if (!conditionWithError.isNull()) {
-      trueState->symbolicError->addErrorConstraint(conditionWithError);
+      /*trueState->symbolicError->addErrorConstraint(conditionWithError);
       falseState->symbolicError->addErrorConstraint(
-          Expr::createIsZero(conditionWithError));
+          Expr::createIsZero(conditionWithError));*/
     }
 
     // Kinda gross, do we even really still want this option?

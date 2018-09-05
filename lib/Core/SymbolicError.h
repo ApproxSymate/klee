@@ -191,7 +191,7 @@ public:
   }
 
   void addErrorConstraint(ref<Expr> error) {
-    constraintsWithError.push_back(error);
+    // constraintsWithError.push_back(error);
   }
 
   /// print - Print the object content to stream
@@ -205,7 +205,7 @@ public:
 
   ref<Expr> getScalingConstraint() {
     ref<Expr> scalingConstraint = errorState->getScalingConstraint();
-    addErrorConstraint(scalingConstraint);
+    // addErrorConstraint(scalingConstraint);
     return scalingConstraint;
   }
 
