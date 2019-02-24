@@ -217,6 +217,15 @@ ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
     }
     ref<Expr> errorLeft = MulExpr::create(extendedLeft, lValue);
     ref<Expr> errorRight = MulExpr::create(extendedRight, rValue);
+
+    int leftWidth = errorLeft->getWidth();
+    int rightWidth = errorRight->getWidth();
+    if (leftWidth < rightWidth) {
+      errorLeft = ZExtExpr::create(errorLeft, rightWidth);
+    } else if (leftWidth > rightWidth) {
+      errorRight = ZExtExpr::create(errorRight, leftWidth);
+    }
+
     ref<Expr> resultError = AddExpr::create(errorLeft, errorRight);
 
     result = ExtractExpr::create(
@@ -252,6 +261,15 @@ ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
 
     ref<Expr> errorLeft = MulExpr::create(extendedLeft, lValue);
     ref<Expr> errorRight = MulExpr::create(extendedRight, rValue);
+
+    int leftWidth = errorLeft->getWidth();
+    int rightWidth = errorRight->getWidth();
+    if (leftWidth < rightWidth) {
+      errorLeft = ZExtExpr::create(errorLeft, rightWidth);
+    } else if (leftWidth > rightWidth) {
+      errorRight = ZExtExpr::create(errorRight, leftWidth);
+    }
+
     ref<Expr> resultError = SubExpr::create(errorLeft, errorRight);
 
     result = ExtractExpr::create(
@@ -389,11 +407,28 @@ ErrorState::propagateError(Executor *executor, llvm::Instruction *instr,
       }
 
       case llvm::ICmpInst::ICMP_SGT: {
+
+        int leftWidth = leftMul->getWidth();
+        int rightWidth = rightMul->getWidth();
+
+        if (leftWidth > rightWidth) {
+          rightMul = ZExtExpr::create(rightMul, leftWidth);
+        } else if (leftWidth < rightWidth) {
+          leftMul = ZExtExpr::create(leftMul, rightWidth);
+        }
         conditionWithError = SgtExpr::create(leftMul, rightMul);
         break;
       }
 
       case llvm::ICmpInst::ICMP_SGE: {
+        int leftWidth = leftMul->getWidth();
+        int rightWidth = rightMul->getWidth();
+
+        if (leftWidth > rightWidth) {
+          rightMul = ZExtExpr::create(rightMul, leftWidth);
+        } else if (leftWidth < rightWidth) {
+          leftMul = ZExtExpr::create(leftMul, rightWidth);
+        }
         conditionWithError = SgeExpr::create(leftMul, rightMul);
         break;
       }
@@ -944,6 +979,7 @@ ref<Expr> ErrorState::createNewMathErrorVar(ref<Expr> mathVar,
   const Array *array = errorArrayCache->CreateArray(errorVarName, Expr::Int8);
   ref<Expr> mathErrorVar = ReadExpr::create(
       UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
+  // ref<Expr> mathErrorVar = ZExtExpr::create(mathErrorVarTemp, Expr::Int32);
   return mathErrorVar;
 }
 

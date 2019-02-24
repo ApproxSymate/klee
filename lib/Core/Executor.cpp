@@ -2012,9 +2012,17 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     const Cell &lCell = eval(ki, 0, state);
     const Cell &rCell = eval(ki, 1, state);
 
-    ref<Expr> left = lCell.value;
-    ref<Expr> right = rCell.value;
-    ref<Expr> result = AddExpr::create(left, right);
+    int leftWidth = lCell.value->getWidth();
+    int rightWidth = rCell.value->getWidth();
+
+    ref<Expr> extendedLeft = lCell.value;
+    ref<Expr> extendedRight = rCell.value;
+    if (leftWidth < rightWidth) {
+      extendedLeft = ZExtExpr::create(extendedLeft, rightWidth);
+    } else if (leftWidth > rightWidth) {
+      extendedRight = ZExtExpr::create(extendedRight, leftWidth);
+    }
+    ref<Expr> result = AddExpr::create(extendedLeft, extendedRight);
 
     std::vector<Cell> arguments;
     arguments.push_back(lCell);
@@ -2029,9 +2037,17 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     const Cell &lCell = eval(ki, 0, state);
     const Cell &rCell = eval(ki, 1, state);
 
-    ref<Expr> left = lCell.value;
-    ref<Expr> right = rCell.value;
-    ref<Expr> result = SubExpr::create(left, right);
+    int leftWidth = lCell.value->getWidth();
+    int rightWidth = rCell.value->getWidth();
+
+    ref<Expr> extendedLeft = lCell.value;
+    ref<Expr> extendedRight = rCell.value;
+    if (leftWidth < rightWidth) {
+      extendedLeft = ZExtExpr::create(extendedLeft, rightWidth);
+    } else if (leftWidth > rightWidth) {
+      extendedRight = ZExtExpr::create(extendedRight, leftWidth);
+    }
+    ref<Expr> result = SubExpr::create(extendedLeft, extendedRight);
 
     std::vector<Cell> arguments;
     arguments.push_back(lCell);
@@ -2396,9 +2412,17 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       const Cell &lCell = eval(ki, 0, state);
       const Cell &rCell = eval(ki, 1, state);
 
-      ref<Expr> left = lCell.value;
-      ref<Expr> right = rCell.value;
-      ref<Expr> result = SgtExpr::create(left, right);
+      int leftWidth = lCell.value->getWidth();
+      int rightWidth = rCell.value->getWidth();
+
+      ref<Expr> extendedLeft = lCell.value;
+      ref<Expr> extendedRight = rCell.value;
+      if (leftWidth < rightWidth) {
+        extendedLeft = ZExtExpr::create(extendedLeft, rightWidth);
+      } else if (leftWidth > rightWidth) {
+        extendedRight = ZExtExpr::create(extendedRight, leftWidth);
+      }
+      ref<Expr> result = SgtExpr::create(extendedLeft, extendedRight);
 
       std::vector<Cell> arguments;
       arguments.push_back(lCell);
@@ -2413,9 +2437,17 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       const Cell &lCell = eval(ki, 0, state);
       const Cell &rCell = eval(ki, 1, state);
 
-      ref<Expr> left = lCell.value;
-      ref<Expr> right = rCell.value;
-      ref<Expr> result = SgeExpr::create(left, right);
+      int leftWidth = lCell.value->getWidth();
+      int rightWidth = rCell.value->getWidth();
+
+      ref<Expr> extendedLeft = lCell.value;
+      ref<Expr> extendedRight = rCell.value;
+      if (leftWidth < rightWidth) {
+        extendedLeft = ZExtExpr::create(extendedLeft, rightWidth);
+      } else if (leftWidth > rightWidth) {
+        extendedRight = ZExtExpr::create(extendedRight, leftWidth);
+      }
+      ref<Expr> result = SgeExpr::create(extendedLeft, extendedRight);
 
       std::vector<Cell> arguments;
       arguments.push_back(lCell);
@@ -3981,9 +4013,11 @@ void Executor::callExternalFunction(ExecutionState &state, KInstruction *target,
     std::string varName =
         state.symbolicError->getNewMathVarName(function->getName().str());
 
-    const Array *array = arrayCache.CreateArray(varName, Expr::Int8);
+    const Array *array = arrayCache.CreateArray(varName, Expr::Int32);
     ref<Expr> newMathVar = ReadExpr::create(
         UpdateList(array, 0), ConstantExpr::create(0, array->getDomain()));
+
+    // ref<Expr> newMathVar = ZExtExpr::create(newMathVarTemp, Expr::Int32);
 
     ref<Expr> newMathErrorVar =
         state.symbolicError->getSymbolicMathErrorVar(newMathVar, varName);
