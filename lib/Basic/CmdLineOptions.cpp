@@ -83,12 +83,12 @@ llvm::cl::list<QueryLoggingSolverType> queryLoggingOptions(
 );
 
 llvm::cl::opt<bool>
-PrecisionError("precision",
+PrecisionError("approximate",
                llvm::cl::desc("Switch on numerical precision analysis"),
                llvm::cl::init(false));
 
 llvm::cl::opt<bool> DebugPrecision(
-    "debug-precision",
+    "debug-approximate",
     llvm::cl::desc("Output debugging trace for numerical precision analysis"),
     llvm::cl::init(false));
 
