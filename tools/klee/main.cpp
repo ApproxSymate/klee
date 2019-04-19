@@ -573,9 +573,9 @@ void KleeHandler::processTestCase(const ExecutionState &state,
         llvm::raw_ostream *mathExpFile = openTestFile("mathf", id);
         std::map<std::string, std::vector<Cell> > &mathCalls =
             state.symbolicError->getMathCalls();
-        for (std::map<std::string, std::vector<Cell> >::const_iterator
-                 itmath = mathCalls.begin(),
-                 iemath = mathCalls.end();
+        for (std::map<std::string, std::vector<Cell> >::reverse_iterator
+                 itmath = mathCalls.rbegin(),
+                 iemath = mathCalls.rend();
              itmath != iemath; ++itmath) {
           *mathExpFile << itmath->first << "\n";
           std::vector<Cell> args = itmath->second;
