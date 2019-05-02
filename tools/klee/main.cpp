@@ -983,6 +983,11 @@ static const char *dontCareUclibc[] = {
   "printf",
   "vprintf"
 };
+
+// Extra symbols we aren't going to warn about if math-calls param is passed
+static const char *dontCareMathCalls[] = { "sin",  "cos",   "sqrt", "abs",
+                                           "fabs", "round", "exp",  "log" };
+
 // Symbols we consider unsafe
 static const char *unsafeExternals[] = {
   "fork", // oh lord
@@ -1000,6 +1005,9 @@ void externalsAndGlobalsCheck(const Module *m) {
                                  dontCareExternals+NELEMS(dontCareExternals));
   std::set<std::string> unsafe(unsafeExternals,
                                unsafeExternals+NELEMS(unsafeExternals));
+  static std::set<std::string> dontCareMathCallsList(
+      dontCareMathCalls, dontCareMathCalls + (sizeof(dontCareMathCalls) /
+                                              sizeof(dontCareMathCalls[0])));
 
   switch (Libc) {
   case KleeLibc:
@@ -1060,9 +1068,16 @@ void externalsAndGlobalsCheck(const Module *m) {
       if (unsafe.count(ext)) {
         foundUnsafe.insert(*it);
       } else {
-        klee_warning("undefined reference to %s: %s",
-                     it->second ? "variable" : "function",
-                     ext.c_str());
+        const char *notFoundName = ext.c_str();
+        if (!MathCalls) {
+          klee_warning("undefined reference to %s: %s",
+                       it->second ? "variable" : "function", notFoundName);
+        } else {
+          if (!dontCareMathCallsList.count(notFoundName)) {
+            klee_warning("undefined reference to %s: %s",
+                         it->second ? "variable" : "function", notFoundName);
+          }
+        }
       }
     }
   }
